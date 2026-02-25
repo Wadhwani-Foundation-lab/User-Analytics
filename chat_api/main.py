@@ -122,6 +122,13 @@ def chat(req: ChatRequest, _: None = Depends(verify_api_key)):
         else:
             response_type = "table"
 
+    # Auto-upgrade: if LLM said "text" but rows have multiple columns or multiple
+    # rows, render as a table so data is never hidden from the user.
+    if response_type == "text" and rows:
+        num_cols = len(rows[0].keys()) if rows else 0
+        if num_cols > 1 or len(rows) > 1:
+            response_type = "table"
+
     if response_type == "table" and rows:
         columns = list(rows[0].keys())
         table_data = TableData(
@@ -132,11 +139,10 @@ def chat(req: ChatRequest, _: None = Depends(verify_api_key)):
     elif response_type == "text":
         if rows:
             first_val = list(rows[0].values())[0] if rows[0] else None
-            count = len(rows)
-            if count == 1 and first_val is not None:
+            if first_val is not None:
                 answer = f"{nl_template} **{first_val}**"
             else:
-                answer = f"{nl_template} ({count} result{'s' if count != 1 else ''})"
+                answer = nl_template or "No data found for that query."
         else:
             answer = "No data found for that query."
 
