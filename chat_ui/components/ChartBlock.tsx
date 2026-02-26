@@ -13,6 +13,7 @@ import {
     Tooltip,
     Legend,
     Filler,
+    type ChartDataset,
 } from "chart.js";
 import { Bar, Line, Pie } from "react-chartjs-2";
 import { ChartConfig } from "@/lib/types";
@@ -91,7 +92,8 @@ export default function ChartBlock({ config }: ChartBlockProps) {
 
     const data = {
         labels: config.labels,
-        datasets: config.datasets,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        datasets: config.datasets as ChartDataset<any, (number | null)[]>[],
     };
 
     const downloadChart = () => {
