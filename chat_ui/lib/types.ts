@@ -36,3 +36,11 @@ export interface ChatMessage {
   sql_used?: string;
   timestamp: Date;
 }
+
+export interface Session {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+

@@ -46,18 +46,46 @@ def ask(system_prompt: str, history: list[dict], question: str) -> dict:
 
     raw_text: str = response.content[0].text
 
-    # Extract JSON block from the response (handles markdown code fences)
-    json_match = re.search(r"```json\s*(\{[\s\S]*?\})\s*```", raw_text)
-    if not json_match:
-        # Try raw JSON without fences
-        json_match = re.search(r"\{[\s\S]*?\}", raw_text)
+    # Extract JSON block — use brace-depth scanner to correctly handle nested JSON
+    def extract_json_object(text: str) -> str | None:
+        """Find the first complete {...} block, respecting nested braces."""
+        start = text.find("{")
+        if start == -1:
+            return None
+        depth = 0
+        in_string = False
+        escape_next = False
+        for i, ch in enumerate(text[start:], start):
+            if escape_next:
+                escape_next = False
+                continue
+            if ch == "\\" and in_string:
+                escape_next = True
+                continue
+            if ch == '"':
+                in_string = not in_string
+                continue
+            if in_string:
+                continue
+            if ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    return text[start : i + 1]
+        return None
 
-    if not json_match:
+    # First try: extract from inside a ```json ... ``` fence
+    fenced = re.search(r"```json\s*([\s\S]*?)\s*```", raw_text)
+    if fenced:
+        json_str = extract_json_object(fenced.group(1)) or extract_json_object(raw_text)
+    else:
+        json_str = extract_json_object(raw_text)
+
+    if not json_str:
         raise ValueError(
             f"LLM did not return a valid JSON block. Raw response (first 300 chars): {raw_text[:300]}"
         )
-
-    json_str = json_match.group(1) if json_match.lastindex else json_match.group(0)
 
     try:
         parsed = json.loads(json_str)

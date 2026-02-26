@@ -18,6 +18,7 @@ from llm_client import ask
 from supabase_runner import execute, test_connection
 from session_store import get_history, append_turn, clear_session
 from chart_formatter import format_chart
+import chat_history_store as chs
 
 # ─── App setup ─────────────────────────────────────────────────────────────────
 
@@ -140,15 +141,36 @@ def chat(req: ChatRequest, _: None = Depends(verify_api_key)):
         if rows:
             first_val = list(rows[0].values())[0] if rows[0] else None
             if first_val is not None:
-                answer = f"{nl_template} **{first_val}**"
+                str_val = str(first_val)
+                # Substitute {result} placeholder inline for a natural sentence,
+                # fall back to bolded suffix if the template has no placeholder.
+                if "{result}" in nl_template:
+                    answer = nl_template.replace("{result}", f"**{str_val}**")
+                else:
+                    answer = f"{nl_template} **{str_val}**"
             else:
                 answer = nl_template or "No data found for that query."
         else:
             answer = "No data found for that query."
 
-    # ── 6. Update session ───────────────────────────────────────────────────────
+    # ── 6. Update session (in-memory + Supabase) ────────────────────────────────
     append_turn(req.session_id, "user", req.question)
     append_turn(req.session_id, "assistant", answer)
+
+    # Persist to Supabase (fire-and-forget — don't fail the response if DB is down)
+    try:
+        chart_dict = chart_config.model_dump() if chart_config else None
+        table_dict = table_data.model_dump() if table_data else None
+        chs.save_message(req.session_id, "user", req.question)
+        chs.save_message(
+            req.session_id, "assistant", answer,
+            response_type=response_type,
+            chart_config=chart_dict,
+            table_data=table_dict,
+            sql_used=sql if sql else None,
+        )
+    except Exception as e:
+        print(f"[WARN] Failed to persist message to Supabase: {e}")
 
     return ChatResponse(
         answer=answer,
@@ -172,3 +194,40 @@ def clear_session_history(session_id: str, _: None = Depends(verify_api_key)):
     """Clear all conversation history for a session (e.g. New Chat)."""
     clear_session(session_id)
     return {"message": "Session cleared.", "session_id": session_id}
+
+
+# ── Chat Sessions (Supabase-backed) ────────────────────────────────────────────
+
+from pydantic import BaseModel as _BM
+
+class SessionCreateRequest(_BM):
+    session_id: str
+    title: str
+
+
+@app.post("/api/sessions", tags=["Sessions"])
+def create_session(req: SessionCreateRequest, _: None = Depends(verify_api_key)):
+    """Register a new named chat session in Supabase."""
+    try:
+        chs.create_session_with_id(req.session_id, req.title)
+        return {"id": req.session_id, "title": req.title}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/sessions", tags=["Sessions"])
+def list_sessions(_: None = Depends(verify_api_key)):
+    """Return recent chat sessions."""
+    try:
+        return chs.list_sessions()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/sessions/{session_id}/messages", tags=["Sessions"])
+def get_messages(session_id: str, _: None = Depends(verify_api_key)):
+    """Return all messages for a session."""
+    try:
+        return chs.get_session_messages(session_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
