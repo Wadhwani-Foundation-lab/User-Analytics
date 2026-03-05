@@ -842,3 +842,252 @@ GROUP BY user_type;
 | 18 | Multi-feature users vs single-feature retention | `nep_liftoffx_data_sample` | `COUNT(DISTINCT activity_type)` |
 | 19 | Users who ask questions AND book mentors | `nep_liftoffx_data_sample` | `activity_type` overlap |
 | 20 | Guided Q&A usage vs retention/repeat behaviour | All tables | `response_flow_state='completed'` |
+| 21 | Active mentors by industry | `nep_mentor_profiles_sample_data` | `user_status='ACTIVE'`, `industry_name` |
+| 22 | Mentors by startup stage expertise | `nep_mentor_profiles_sample_data` | `stage_name` |
+| 23 | Mentor sessions booked vs profiles available | Both mentor tables | JOIN on `user_id` |
+| 24 | Top events by attendance rate | `nep_master_live_events_data` | `participant_status='ATTENDED'` |
+| 25 | Events by program and session type | `nep_master_live_events_data` | `program_key`, `sessiontype` |
+| 26 | No-show rate by gap area / topic | `nep_master_live_events_data` | `gapkey`, `participant_status` |
+| 27 | User activity breakdown by type | `nep_liftoffx_data_sample` | `activity_type` |
+| 28 | Users by traffic source who attended events | Both tables | JOIN on `user_id`, `participant_user_id` |
+| 29 | Internal vs External user engagement | Both tables | `user_type` |
+| 30 | Profile completion status distribution | `nep_master_user_table_sample_data` | `login_status`, `profile_status` |
+
+---
+
+## Section F — Mentor Profiles, Live Events & Activity Breakdown (Questions 21–30)
+
+> These examples are grounded in the functional business context of each table:
+> - **nep_master_dataset_table** → registration, identities, status, acquisition
+> - **Nep_liftoffx_data** → user actions: AI chat, mentor sessions, events, resource views, visitor journeys
+> - **Nep_mentor_profiles** → mentor identities, expertise (industry + stage), account status
+> - **Nep_master_live_events** → virtual sessions, attendance, speaker details, Zoom logistics
+
+---
+
+### Q21. How many active mentors are there per industry?
+
+```sql
+SELECT
+  industry_name,
+  COUNT(DISTINCT user_id) AS active_mentors
+FROM nep_mentor_profiles_sample_data
+WHERE user_status = 'ACTIVE'
+  AND deleted = false
+GROUP BY industry_name
+ORDER BY active_mentors DESC
+LIMIT 500;
+```
+
+**What it does:** Shows which industries are best represented in the active mentor pool — useful for spotting supply gaps.
+
+---
+
+### Q22. How many mentors cover each startup stage?
+
+```sql
+SELECT
+  stage_name,
+  COUNT(DISTINCT user_id) AS mentors
+FROM nep_mentor_profiles_sample_data
+WHERE user_status = 'ACTIVE'
+  AND deleted = false
+GROUP BY stage_name
+ORDER BY mentors DESC
+LIMIT 500;
+```
+
+**What it does:** Identifies which startup stages (Pre Idea, Idea, Early, Growth, Demo) have the most mentor coverage — helps spot demand gaps.
+
+---
+
+### Q23. Which industries have the most mentor sessions booked?
+
+```sql
+SELECT
+  m.industry_name,
+  COUNT(DISTINCT a.userid)  AS users_who_booked,
+  COUNT(*)                  AS total_sessions
+FROM nep_liftoffx_data_sample a
+JOIN nep_mentor_profiles_sample_data m
+  ON a.mentor_id::VARCHAR = m.user_id
+WHERE a.activity_type = 'mentor_session'
+GROUP BY m.industry_name
+ORDER BY total_sessions DESC
+LIMIT 500;
+```
+
+**What it does:** Connects mentor session activity with mentor industry expertise to reveal which sectors see the most bookings.
+
+---
+
+### Q24. What is the attendance rate for each completed event?
+
+```sql
+SELECT
+  event_id,
+  MAX(event_title)    AS event_title,
+  MAX(start_date)     AS start_date,
+  MAX(sessiontype)    AS session_type,
+  MAX(gapkey)         AS gap_area,
+  COUNT(*)            AS total_registrations,
+  SUM(CASE WHEN participant_status = 'ATTENDED' THEN 1 ELSE 0 END)  AS attended,
+  SUM(CASE WHEN participant_status = 'NOSHOW'   THEN 1 ELSE 0 END)  AS no_shows,
+  ROUND(
+    SUM(CASE WHEN participant_status = 'ATTENDED' THEN 1 ELSE 0 END)::NUMERIC
+    / NULLIF(COUNT(*), 0) * 100, 2
+  ) AS attendance_rate_pct
+FROM nep_master_live_events_data
+WHERE event_status = 'COMPLETED'
+GROUP BY event_id
+ORDER BY attendance_rate_pct DESC
+LIMIT 500;
+```
+
+**What it does:** Ranks every completed event by its attendance rate, making it easy to spot which sessions resonated most.
+
+---
+
+### Q25. How many events and attendees does each program and session type have?
+
+```sql
+SELECT
+  program_key,
+  sessiontype,
+  COUNT(DISTINCT event_id)                                            AS total_events,
+  SUM(CASE WHEN participant_status = 'ATTENDED' THEN 1 ELSE 0 END)  AS total_attended,
+  COUNT(*)                                                            AS total_registrations,
+  ROUND(
+    SUM(CASE WHEN participant_status = 'ATTENDED' THEN 1 ELSE 0 END)::NUMERIC
+    / NULLIF(COUNT(*), 0) * 100, 2
+  ) AS attendance_rate_pct
+FROM nep_master_live_events_data
+WHERE event_status = 'COMPLETED'
+GROUP BY program_key, sessiontype
+ORDER BY program_key, total_attended DESC
+LIMIT 500;
+```
+
+**What it does:** Compares programs (`liftoff-propel`, `liftoff-spark`, `ignite`) and session formats (`roundTable`, `workshop`, `masterclass`) side-by-side.
+
+---
+
+### Q26. Which gap areas have the highest no-show rates?
+
+```sql
+SELECT
+  gapkey                                                              AS gap_area,
+  COUNT(DISTINCT event_id)                                            AS events,
+  COUNT(*)                                                            AS total_registrations,
+  SUM(CASE WHEN participant_status = 'NOSHOW'   THEN 1 ELSE 0 END)  AS no_shows,
+  SUM(CASE WHEN participant_status = 'ATTENDED' THEN 1 ELSE 0 END)  AS attended,
+  ROUND(
+    SUM(CASE WHEN participant_status = 'NOSHOW' THEN 1 ELSE 0 END)::NUMERIC
+    / NULLIF(COUNT(*), 0) * 100, 2
+  ) AS no_show_rate_pct
+FROM nep_master_live_events_data
+WHERE event_status = 'COMPLETED'
+  AND gapkey IS NOT NULL
+GROUP BY gapkey
+ORDER BY no_show_rate_pct DESC
+LIMIT 500;
+```
+
+**What it does:** Surfaces gap areas (e.g. GrowthHacking, Finance, Marketing) where users register but don't show up — signals for scheduling or content improvements.
+
+---
+
+### Q27. What is the breakdown of user activity types on the platform?
+
+```sql
+SELECT
+  activity_type,
+  COUNT(*)                    AS total_events,
+  COUNT(DISTINCT userid)      AS unique_users,
+  ROUND(
+    COUNT(*)::NUMERIC / NULLIF(SUM(COUNT(*)) OVER (), 0) * 100, 2
+  ) AS share_pct
+FROM nep_liftoffx_data_sample
+GROUP BY activity_type
+ORDER BY total_events DESC
+LIMIT 500;
+```
+
+**What it does:** Shows how users spend their time — AI chat, mentor sessions, live events, resource views, or just browsing — and the relative share of each.
+
+---
+
+### Q28. Which traffic sources produce users who attend the most live events?
+
+```sql
+SELECT
+  u.traffic_source_source                                             AS traffic_source,
+  COUNT(DISTINCT u.user_id)                                           AS total_users,
+  COUNT(DISTINCT e.participant_user_id)                               AS users_attended_events,
+  COUNT(*)                                                            AS total_event_attendances,
+  ROUND(
+    COUNT(DISTINCT e.participant_user_id)::NUMERIC
+    / NULLIF(COUNT(DISTINCT u.user_id), 0) * 100, 2
+  ) AS event_attendance_rate_pct
+FROM nep_master_user_table_sample_data u
+LEFT JOIN nep_master_live_events_data e
+  ON u.user_id = e.participant_user_id
+ AND e.participant_status = 'ATTENDED'
+WHERE u.traffic_source_source IS NOT NULL
+GROUP BY u.traffic_source_source
+ORDER BY event_attendance_rate_pct DESC
+LIMIT 500;
+```
+
+**What it does:** Connects acquisition source to live event participation — shows which channels bring users who actually show up to sessions.
+
+---
+
+### Q29. How does engagement compare between Internal and External users?
+
+```sql
+SELECT
+  u.user_type,
+  COUNT(DISTINCT u.user_id)                                           AS total_users,
+  COUNT(DISTINCT CASE WHEN a.activity_type = 'ai_chat'
+        AND a.message_query IS NOT NULL THEN a.userid END)            AS ai_chat_users,
+  COUNT(DISTINCT CASE WHEN a.activity_type = 'mentor_session'
+        THEN a.userid END)                                            AS mentor_session_users,
+  COUNT(DISTINCT CASE WHEN a.activity_type = 'live_event'
+        THEN a.userid END)                                            AS live_event_users,
+  COUNT(DISTINCT CASE WHEN a.activity_type = 'resource_view'
+        THEN a.userid END)                                            AS resource_view_users,
+  ROUND(
+    COUNT(DISTINCT CASE WHEN a.activity_type = 'ai_chat'
+          AND a.message_query IS NOT NULL THEN a.userid END)::NUMERIC
+    / NULLIF(COUNT(DISTINCT u.user_id), 0) * 100, 2
+  ) AS ai_chat_rate_pct
+FROM nep_master_user_table_sample_data u
+LEFT JOIN nep_liftoffx_data_sample a ON u.user_id = a.userid
+GROUP BY u.user_type
+ORDER BY u.user_type
+LIMIT 500;
+```
+
+**What it does:** Side-by-side comparison of how Internal (Wadhwani staff) vs External (entrepreneurs) users engage across every feature on the platform.
+
+---
+
+### Q30. What is the profile completion status distribution of registered users?
+
+```sql
+SELECT
+  login_status,
+  profile_status,
+  user_type,
+  COUNT(*)  AS users,
+  ROUND(COUNT(*)::NUMERIC / NULLIF(SUM(COUNT(*)) OVER (), 0) * 100, 2) AS share_pct
+FROM nep_master_user_table_sample_data
+GROUP BY login_status, profile_status, user_type
+ORDER BY users DESC
+LIMIT 500;
+```
+
+**What it does:** Shows how many users have completed their profile vs remain in intermediate states — useful for onboarding funnel health checks.
+
+---

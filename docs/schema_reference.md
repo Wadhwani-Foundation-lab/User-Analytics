@@ -17,7 +17,9 @@
 
 ## 1. `nep_master_user_table_sample_data`
 
-**Description:** Master user registry. One row per registered user. Contains identity, profile status, acquisition channel, and role information. This is the primary table for user-level analysis.
+> **Business context — `nep_master_dataset_table`:** This table contains detailed registration and profile data of users on the NEP platform. It tracks individual identities (`user_id`, `user_email`), alongside status indicators like `login_status` and `profile_status` which are largely marked as `completedprofile` or `verifiedphone`. The dataset also captures administrative metadata such as user types (`Internal Users` vs `External Users`) and specific acquisition details such as traffic sources (UTM source, medium, campaign). Use this table to answer questions about who registered, when they joined, where they came from, and what kind of business they run.
+
+**Description:** Master user registry. One row per registered user. Contains identity, profile status, acquisition channel, and role information. This is the primary table for all user-level analysis.
 
 | Column | Type | Description | Sample Values |
 |--------|------|-------------|---------------|
@@ -58,6 +60,8 @@
 ---
 
 ## 2. `nep_master_live_events_data`
+
+> **Business context — `Nep_master_live_events`:** This table provides a detailed log of live event interactions, capturing how users participate in virtual sessions like `roundTable` meetings, workshops, and masterclasses. It tracks key logistics such as `event_status`, `speaker_name`, and `metadata_join_url` (Zoom meeting links), while also recording each attendee's `participant_status` (`ATTENDED`, `NOSHOW`, `REGISTERED`). This information allows you to measure real-time engagement, see which topics successfully reach users, analyse speaker performance, and track event attendance trends across programs like `liftoff-propel`, `liftoff-spark`, and `ignite`.
 
 **Description:** Tracks live events (webinars, round tables, expert sessions) and each participant's attendance record. One row per **participant per event** — the same event appears multiple times (once per attendee). Use `GROUP BY event_id` when querying event-level metrics.
 
@@ -111,6 +115,8 @@
 ---
 
 ## 3. `nep_liftoffx_data_sample`
+
+> **Business context — `Nep_liftoffx_data`:** This table provides details of user activity on the platform, showing exactly how people interact with NEP's services. It tracks key actions like users asking AI questions (`activity_type = 'ai_chat'`, `message_query IS NOT NULL`), messaging mentors (`activity_type = 'mentor_session'`), attending live sessions (`activity_type = 'live_event'`), and clicking through learning journeys (`activity_type = 'resource_view'`, `visitors`). Each row also records the `traffic_source_source` and `traffic_source_campaign`, helping you see where the most active users come from. Use this table for engagement, retention, funnel analysis, DAU/WAU/MAU, and feature usage comparisons.
 
 **Description:** The central activity fact table. One row per **user activity event** (e.g. a page view, a chat message, a mentor session, a live event attendance). A single user can have many rows. Used for engagement, retention, funnel, and feature usage analysis. Includes data from GA4 (Google Analytics), AI chat interactions, mentor sessions, and live events.
 
@@ -181,6 +187,8 @@
 ---
 
 ## 4. `nep_mentor_profiles_sample_data`
+
+> **Business context — `Nep_mentor_profiles`:** This table provides a detailed look at mentor profiles within the NEP platform, capturing who they are and their professional background. It tracks essential identity details like names (`first_name`, `last_name`) and `linkedin_url`, while also monitoring their current account status (`user_status`: `ACTIVE` or `PENDING`). Most importantly, it lists specific expertise areas via `industry_name` (e.g. `Real Estate & Housing`, `Services`, `FinTech`, `Gaming`) and `stage_name` (e.g. `Pre Idea Stage`, `Growth Stage`), allowing you to see which industries and business stages the mentors represent. Use this table to analyse mentor supply, filter by industry or startup stage expertise, or join with the activity table to analyse mentor session utilisation.
 
 **Description:** Profile records for mentors on the NEP platform. One row per mentor. Contains professional background, expertise areas, educational history, and employment details. Use this table to analyse mentor supply, filter by industry/stage expertise, or join with session data.
 
