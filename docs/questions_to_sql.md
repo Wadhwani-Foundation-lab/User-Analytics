@@ -6,7 +6,7 @@
 > - `nep_master_live_events_data` — live events and attendance
 > - `nep_mentor_profiles_sample_data` — mentor profiles
 >
-> **Key convention:** "asking a question" = a row in `nep_liftoffx_data_sample` where `activity_type = 'ai_chat'` and `message_query IS NOT NULL`.
+> **Key convention:** "asking a question" = a row in `nep_liftoffx_data_sample` where `activity_type = 'message'` and `message_query IS NOT NULL`.
 
 ---
 
@@ -19,7 +19,7 @@
 ```sql
 SELECT COUNT(DISTINCT userid) AS users_who_asked
 FROM nep_liftoffx_data_sample
-WHERE activity_type = 'ai_chat'
+WHERE activity_type = 'message'
   AND message_query IS NOT NULL
   AND message_date >= '2026-01-01'
   AND message_date < '2026-02-01';
@@ -34,7 +34,7 @@ WHERE activity_type = 'ai_chat'
 ```sql
 SELECT COUNT(*) AS total_questions
 FROM nep_liftoffx_data_sample
-WHERE activity_type = 'ai_chat'
+WHERE activity_type = 'message'
   AND message_query IS NOT NULL
   AND message_date >= '2026-01-01'
   AND message_date < '2026-02-01';
@@ -48,7 +48,7 @@ WHERE activity_type = 'ai_chat'
 >   userid,
 >   COUNT(*) AS questions_asked
 > FROM nep_liftoffx_data_sample
-> WHERE activity_type = 'ai_chat'
+> WHERE activity_type = 'message'
 >   AND message_query IS NOT NULL
 >   AND message_date >= '2026-01-01'
 >   AND message_date < '2026-02-01'
@@ -66,7 +66,7 @@ SELECT
   message_date                        AS activity_day,
   COUNT(DISTINCT userid)              AS dau
 FROM nep_liftoffx_data_sample
-WHERE activity_type = 'ai_chat'
+WHERE activity_type = 'message'
   AND message_query IS NOT NULL
 GROUP BY message_date
 ORDER BY message_date;
@@ -79,7 +79,7 @@ SELECT
   month_year_order,
   COUNT(DISTINCT userid)              AS wau
 FROM nep_liftoffx_data_sample
-WHERE activity_type = 'ai_chat'
+WHERE activity_type = 'message'
   AND message_query IS NOT NULL
 GROUP BY week_range, month_year_order
 ORDER BY month_year_order;
@@ -92,7 +92,7 @@ SELECT
   month_year_order,
   COUNT(DISTINCT userid)              AS mau
 FROM nep_liftoffx_data_sample
-WHERE activity_type = 'ai_chat'
+WHERE activity_type = 'message'
   AND message_query IS NOT NULL
 GROUP BY month_year, month_year_order
 ORDER BY month_year_order;
@@ -107,7 +107,7 @@ WITH daily AS (
     message_date,
     COUNT(DISTINCT userid) AS dau
   FROM nep_liftoffx_data_sample
-  WHERE activity_type = 'ai_chat'
+  WHERE activity_type = 'message'
     AND message_query IS NOT NULL
   GROUP BY month_year, month_year_order, message_date
 ),
@@ -117,7 +117,7 @@ monthly AS (
     month_year_order,
     COUNT(DISTINCT userid) AS mau
   FROM nep_liftoffx_data_sample
-  WHERE activity_type = 'ai_chat'
+  WHERE activity_type = 'message'
     AND message_query IS NOT NULL
   GROUP BY month_year, month_year_order
 ),
@@ -152,7 +152,7 @@ WITH weekly_questions AS (
     MIN(year_monthnumber_weekstart_order) AS week_order,
     COUNT(*)                              AS questions
   FROM nep_liftoffx_data_sample
-  WHERE activity_type = 'ai_chat'
+  WHERE activity_type = 'message'
     AND message_query IS NOT NULL
   GROUP BY week_range, month_year_order
 )
@@ -177,7 +177,7 @@ WITH monthly_questions AS (
     month_year_order,
     COUNT(*) AS questions
   FROM nep_liftoffx_data_sample
-  WHERE activity_type = 'ai_chat'
+  WHERE activity_type = 'message'
     AND message_query IS NOT NULL
   GROUP BY month_year, month_year_order
 )
@@ -231,7 +231,7 @@ WITH jan_registrations AS (
 questioners AS (
   SELECT DISTINCT userid
   FROM nep_liftoffx_data_sample
-  WHERE activity_type = 'ai_chat'
+  WHERE activity_type = 'message'
     AND message_query IS NOT NULL
 )
 SELECT COUNT(*) AS registered_users_who_asked
@@ -253,7 +253,7 @@ WITH jan_registrations AS (
 questioners AS (
   SELECT DISTINCT userid
   FROM nep_liftoffx_data_sample
-  WHERE activity_type = 'ai_chat'
+  WHERE activity_type = 'message'
     AND message_query IS NOT NULL
 ),
 counts AS (
@@ -283,7 +283,7 @@ WITH ranked_messages AS (
     message_date,
     ROW_NUMBER() OVER (PARTITION BY userid ORDER BY message_date, response_timestamp) AS msg_rank
   FROM nep_liftoffx_data_sample
-  WHERE activity_type = 'ai_chat'
+  WHERE activity_type = 'message'
     AND message_query IS NOT NULL
 ),
 first_and_second AS (
@@ -313,7 +313,7 @@ WITH ranked_messages AS (
     message_date,
     ROW_NUMBER() OVER (PARTITION BY userid ORDER BY message_date, response_timestamp) AS msg_rank
   FROM nep_liftoffx_data_sample
-  WHERE activity_type = 'ai_chat'
+  WHERE activity_type = 'message'
     AND message_query IS NOT NULL
 ),
 gaps AS (
@@ -353,12 +353,12 @@ SELECT
   u.traffic_source_campaign AS utm_campaign,
   COUNT(DISTINCT u.user_id) AS total_registered,
   COUNT(DISTINCT a.userid)  AS users_who_asked,
-  SUM(CASE WHEN a.activity_type = 'ai_chat' AND a.message_query IS NOT NULL
+  SUM(CASE WHEN a.activity_type = 'message' AND a.message_query IS NOT NULL
            THEN 1 ELSE 0 END) AS total_questions_asked
 FROM nep_master_user_table_sample_data u
 LEFT JOIN nep_liftoffx_data_sample a
   ON u.user_id = a.userid
-  AND a.activity_type = 'ai_chat'
+  AND a.activity_type = 'message'
   AND a.message_query IS NOT NULL
 WHERE u.traffic_source_campaign IS NOT NULL
 GROUP BY u.traffic_source_source, u.traffic_source_medium, u.traffic_source_campaign
@@ -388,7 +388,7 @@ campaign_converters AS (
   FROM nep_master_user_table_sample_data u
   JOIN nep_liftoffx_data_sample a
     ON u.user_id = a.userid
-   AND a.activity_type = 'ai_chat'
+   AND a.activity_type = 'message'
    AND a.message_query IS NOT NULL
   WHERE u.traffic_source_campaign IS NOT NULL
 )
@@ -419,16 +419,16 @@ SELECT
   u.traffic_source_source                               AS partner,
   COUNT(DISTINCT u.user_id)                             AS users_from_partner,
   COUNT(DISTINCT CASE
-    WHEN a.activity_type = 'ai_chat' AND a.message_query IS NOT NULL
+    WHEN a.activity_type = 'message' AND a.message_query IS NOT NULL
     THEN a.userid END)                                  AS engaged_users,
   ROUND(
     COUNT(DISTINCT CASE
-      WHEN a.activity_type = 'ai_chat' AND a.message_query IS NOT NULL
+      WHEN a.activity_type = 'message' AND a.message_query IS NOT NULL
       THEN a.userid END)::NUMERIC
     / NULLIF(COUNT(DISTINCT u.user_id), 0) * 100, 2
   )                                                     AS engagement_rate_pct,
   COALESCE(SUM(CASE
-    WHEN a.activity_type = 'ai_chat' AND a.message_query IS NOT NULL
+    WHEN a.activity_type = 'message' AND a.message_query IS NOT NULL
     THEN 1 END), 0)                                     AS total_questions
 FROM nep_master_user_table_sample_data u
 LEFT JOIN nep_liftoffx_data_sample a ON u.user_id = a.userid
@@ -453,14 +453,14 @@ SELECT
   END                                                   AS traffic_type,
   COUNT(DISTINCT u.user_id)                             AS total_users,
   COUNT(DISTINCT CASE
-    WHEN a.activity_type = 'ai_chat' AND a.message_query IS NOT NULL
+    WHEN a.activity_type = 'message' AND a.message_query IS NOT NULL
     THEN a.userid END)                                  AS users_who_asked,
   COALESCE(SUM(CASE
-    WHEN a.activity_type = 'ai_chat' AND a.message_query IS NOT NULL
+    WHEN a.activity_type = 'message' AND a.message_query IS NOT NULL
     THEN 1 END), 0)                                     AS total_questions,
   ROUND(
     COUNT(DISTINCT CASE
-      WHEN a.activity_type = 'ai_chat' AND a.message_query IS NOT NULL
+      WHEN a.activity_type = 'message' AND a.message_query IS NOT NULL
       THEN a.userid END)::NUMERIC
     / NULLIF(COUNT(DISTINCT u.user_id), 0) * 100, 2
   )                                                     AS engagement_rate_pct
@@ -487,7 +487,7 @@ WITH weekly_users AS (
     week_range,
     userid
   FROM nep_liftoffx_data_sample
-  WHERE activity_type = 'ai_chat'
+  WHERE activity_type = 'message'
     AND message_query IS NOT NULL
   GROUP BY year_monthnumber_weekstart_order, week_range, userid
 ),
@@ -526,7 +526,7 @@ WITH user_months AS (
     userid,
     COUNT(DISTINCT month_year_order) AS months_active
   FROM nep_liftoffx_data_sample
-  WHERE activity_type = 'ai_chat'
+  WHERE activity_type = 'message'
     AND message_query IS NOT NULL
   GROUP BY userid
 )
@@ -543,7 +543,7 @@ ORDER BY months_active;
 WITH user_months AS (
   SELECT userid, COUNT(DISTINCT month_year_order) AS months_active
   FROM nep_liftoffx_data_sample
-  WHERE activity_type = 'ai_chat'
+  WHERE activity_type = 'message'
     AND message_query IS NOT NULL
   GROUP BY userid
 )
@@ -573,7 +573,7 @@ user_months AS (
     a.userid,
     COUNT(DISTINCT a.month_year_order) AS months_active
   FROM nep_liftoffx_data_sample a
-  WHERE a.activity_type = 'ai_chat'
+  WHERE a.activity_type = 'message'
     AND a.message_query IS NOT NULL
   GROUP BY a.userid
 )
@@ -607,7 +607,7 @@ WITH user_question_counts AS (
     userid,
     COUNT(*) AS questions_asked
   FROM nep_liftoffx_data_sample
-  WHERE activity_type = 'ai_chat'
+  WHERE activity_type = 'message'
     AND message_query IS NOT NULL
   GROUP BY userid
 )
@@ -627,7 +627,7 @@ FROM user_question_counts;
 WITH user_question_counts AS (
   SELECT userid, COUNT(*) AS questions_asked
   FROM nep_liftoffx_data_sample
-  WHERE activity_type = 'ai_chat'
+  WHERE activity_type = 'message'
     AND message_query IS NOT NULL
   GROUP BY userid
 )
@@ -654,7 +654,7 @@ Compares activity event distributions between power users (>5 questions) and cas
 WITH question_counts AS (
   SELECT userid, COUNT(*) AS questions_asked
   FROM nep_liftoffx_data_sample
-  WHERE activity_type = 'ai_chat'
+  WHERE activity_type = 'message'
     AND message_query IS NOT NULL
   GROUP BY userid
 ),
@@ -683,7 +683,7 @@ ORDER BY s.segment, event_count DESC;
 
 ### Q18. Do users who use multiple features have higher retention?
 
-"Multiple features" = using more than one distinct `activity_type` (e.g. both `ai_chat` and `live_event`).
+"Multiple features" = using more than one distinct `activity_type` (e.g. both `message` and `session`).
 
 ```sql
 WITH user_features AS (
@@ -698,7 +698,7 @@ user_retention AS (
     userid,
     COUNT(DISTINCT month_year_order) AS months_active
   FROM nep_liftoffx_data_sample
-  WHERE activity_type = 'ai_chat'
+  WHERE activity_type = 'message'
     AND message_query IS NOT NULL
   GROUP BY userid
 )
@@ -729,13 +729,13 @@ ORDER BY feature_breadth;
 WITH ai_users AS (
   SELECT DISTINCT userid
   FROM nep_liftoffx_data_sample
-  WHERE activity_type = 'ai_chat'
+  WHERE activity_type = 'message'
     AND message_query IS NOT NULL
 ),
 mentor_users AS (
   SELECT DISTINCT userid
   FROM nep_liftoffx_data_sample
-  WHERE activity_type = 'mentor_session'
+  WHERE activity_type = 'mentor'
 )
 SELECT
   COUNT(DISTINCT a.userid)               AS users_who_asked_questions,
@@ -761,11 +761,11 @@ SELECT
 FROM nep_master_user_table_sample_data u
 LEFT JOIN (
   SELECT DISTINCT userid FROM nep_liftoffx_data_sample
-  WHERE activity_type = 'ai_chat' AND message_query IS NOT NULL
+  WHERE activity_type = 'message' AND message_query IS NOT NULL
 ) ai ON u.user_id = ai.userid
 LEFT JOIN (
   SELECT DISTINCT userid FROM nep_liftoffx_data_sample
-  WHERE activity_type = 'mentor_session'
+  WHERE activity_type = 'mentor'
 ) me ON u.user_id = me.userid
 LEFT JOIN (
   SELECT DISTINCT participant_user_id AS userid
@@ -787,7 +787,7 @@ WITH guided_users AS (
   -- Users who completed at least one full AI Q&A interaction
   SELECT DISTINCT userid
   FROM nep_liftoffx_data_sample
-  WHERE activity_type = 'ai_chat'
+  WHERE activity_type = 'message'
     AND message_query IS NOT NULL
     AND response_flow_state = 'completed'
     AND response_content IS NOT NULL
@@ -822,8 +822,8 @@ GROUP BY user_type;
 
 | # | Question | Key Table(s) | Filter / Key Column |
 |---|----------|-------------|---------------------|
-| 1 | Users who asked ≥1 question (Jan 2026) | `nep_liftoffx_data_sample` | `activity_type='ai_chat'`, `message_date` |
-| 2 | Total questions asked (Jan 2026) | `nep_liftoffx_data_sample` | `activity_type='ai_chat'`, `message_date` |
+| 1 | Users who asked ≥1 question (Jan 2026) | `nep_liftoffx_data_sample` | `activity_type='message'`, `message_date` |
+| 2 | Total questions asked (Jan 2026) | `nep_liftoffx_data_sample` | `activity_type='message'`, `message_date` |
 | 3 | DAU/WAU/MAU & stickiness | `nep_liftoffx_data_sample` | `message_date`, `week_range`, `month_year` |
 | 4 | WoW/MoM questions change | `nep_liftoffx_data_sample` | `LAG()` over `week_order` / `month_year_order` |
 | 5 | Users registered (Jan 2026) | `nep_master_user_table_sample_data` | `created_datetime` |
@@ -911,7 +911,7 @@ SELECT
 FROM nep_liftoffx_data_sample a
 JOIN nep_mentor_profiles_sample_data m
   ON a.mentor_id::VARCHAR = m.user_id
-WHERE a.activity_type = 'mentor_session'
+WHERE a.activity_type = 'mentor'
 GROUP BY m.industry_name
 ORDER BY total_sessions DESC
 LIMIT 500;
@@ -1049,16 +1049,16 @@ LIMIT 500;
 SELECT
   u.user_type,
   COUNT(DISTINCT u.user_id)                                           AS total_users,
-  COUNT(DISTINCT CASE WHEN a.activity_type = 'ai_chat'
+  COUNT(DISTINCT CASE WHEN a.activity_type = 'message'
         AND a.message_query IS NOT NULL THEN a.userid END)            AS ai_chat_users,
-  COUNT(DISTINCT CASE WHEN a.activity_type = 'mentor_session'
+  COUNT(DISTINCT CASE WHEN a.activity_type = 'mentor'
         THEN a.userid END)                                            AS mentor_session_users,
-  COUNT(DISTINCT CASE WHEN a.activity_type = 'live_event'
+  COUNT(DISTINCT CASE WHEN a.activity_type = 'session'
         THEN a.userid END)                                            AS live_event_users,
-  COUNT(DISTINCT CASE WHEN a.activity_type = 'resource_view'
+  COUNT(DISTINCT CASE WHEN a.activity_type = 'resource'
         THEN a.userid END)                                            AS resource_view_users,
   ROUND(
-    COUNT(DISTINCT CASE WHEN a.activity_type = 'ai_chat'
+    COUNT(DISTINCT CASE WHEN a.activity_type = 'message'
           AND a.message_query IS NOT NULL THEN a.userid END)::NUMERIC
     / NULLIF(COUNT(DISTINCT u.user_id), 0) * 100, 2
   ) AS ai_chat_rate_pct
