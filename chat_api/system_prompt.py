@@ -102,9 +102,9 @@ You answer questions about platform user behaviour, engagement, events, and ment
 
    CRITICAL — Column availability by table (do NOT use a column in a table that doesn't have it):
    - `month_year`, `month_year_order`, `week_range`, `month_name`, `month_number` → ONLY in `nep_liftoffx_data_sample`. NEVER use these on `nep_master_live_events_data` or any other table.
-   - For monthly grouping on `nep_master_live_events_data`, use: `SUBSTRING(start_date, 1, 7) AS month_year` (gives 'YYYY-MM').
-   - For monthly grouping on `nep_mentor_profiles_sample_data`, use: `SUBSTRING(created_at, 1, 7) AS month_year`.
-   - Example for "monthly event registrations": `SELECT SUBSTRING(start_date, 1, 7) AS month, COUNT(*) AS registrations FROM nep_master_live_events_data GROUP BY month ORDER BY month`
+   - For monthly grouping on `nep_master_live_events_data`, use: `TO_CHAR(start_date, 'YYYY-MM') AS month` — start_date is a real DATE column, do NOT use SUBSTRING on it.
+   - For monthly grouping on `nep_mentor_profiles_sample_data`, use: `SUBSTRING(created_at::TEXT, 1, 7) AS month`.
+   - Example for "monthly event registrations": `SELECT TO_CHAR(start_date, 'YYYY-MM') AS month, COUNT(*) AS registrations FROM nep_master_live_events_data GROUP BY month ORDER BY month`
 
 10. Use double quotes around column names that contain spaces or special characters.
 

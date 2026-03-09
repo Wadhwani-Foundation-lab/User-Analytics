@@ -1098,19 +1098,19 @@ LIMIT 500;
 
 ```sql
 SELECT
-  SUBSTRING(start_date, 1, 7)  AS month,
+  TO_CHAR(start_date, 'YYYY-MM')  AS month,
   COUNT(DISTINCT event_id)      AS total_events,
   COUNT(*)                      AS total_registrations,
   SUM(CASE WHEN participant_status = 'ATTENDED' THEN 1 ELSE 0 END) AS attended
 FROM nep_master_live_events_data
 WHERE start_date IS NOT NULL
-GROUP BY SUBSTRING(start_date, 1, 7)
+GROUP BY TO_CHAR(start_date, 'YYYY-MM')
 ORDER BY month ASC
 LIMIT 500;
 ```
 
 **What it does:** Monthly breakdown of live events by registration count and attendance.
-Use `SUBSTRING(start_date, 1, 7)` for monthly grouping — `month_year` column does NOT exist on this table.
+Use `TO_CHAR(start_date, 'YYYY-MM')` for monthly grouping — `month_year` column does NOT exist on this table.
 
 ---
 
