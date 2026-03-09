@@ -139,7 +139,7 @@
 | `company_revenue_range` | VARCHAR | User's company revenue range. | `pre-revenue`, `above-5-crore`, `NULL` |
 | `created_datetime` | VARCHAR | Full timestamp of user account creation. Format: `YYYY-MM-DD HH:MM:SS`. Use this column for date range filters on registration date. | `2025-09-30 06:02:09.88` |
 | `activity_id` | VARCHAR | Unique identifier for this specific activity event (composite string). | `17713075002083751771307441` |
-| `activity_type` | VARCHAR | Broad category of the activity. | `visitors`, `ai_chat`, `mentor_session`, `live_event`, `resource_view` |
+| `activity_type` | VARCHAR | Broad category of the activity. **Exact values in the DB:** `'message'` (AI chat — user asked a question), `'mentor'` (mentor session), `'session'` (live event attendance), `'resource'` (resource/content view), `'visitors'` (site visit), `'repeat visitors'` (return visit), `'signup'` (new registration), `'jounrney_explore'` (learning path — note DB typo), `'introductory_video_reg_users'` (intro video view). **NEVER use** `'ai_chat'`, `'mentor_session'`, `'live_event'`, or `'resource_view'` — they do not exist. | `'message'`, `'visitors'`, `'mentor'` |
 | `activity_tittle` | VARCHAR | Specific name of the activity *(note: typo in original — double 't')*. Maps to GA4 event names for visitor events. | `homepage_landed`, `onboarding_skip_clicked`, `page_view`, `profile_change_language_clicked` |
 | `conversation_id` | VARCHAR | ID of the AI chat conversation (populated only for `ai_chat` activity type). | `conv-abc123`, `NULL` |
 | `conversation_parent_id` | DOUBLE PRECISION | Parent conversation ID for threaded chat (null if top-level). | `NULL` |
