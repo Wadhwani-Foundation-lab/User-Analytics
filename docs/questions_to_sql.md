@@ -1091,3 +1091,43 @@ LIMIT 500;
 **What it does:** Shows how many users have completed their profile vs remain in intermediate states — useful for onboarding funnel health checks.
 
 ---
+
+---
+
+### Q31. Give me a monthly event chart by registrations
+
+```sql
+SELECT
+  SUBSTRING(start_date, 1, 7)  AS month,
+  COUNT(DISTINCT event_id)      AS total_events,
+  COUNT(*)                      AS total_registrations,
+  SUM(CASE WHEN participant_status = 'ATTENDED' THEN 1 ELSE 0 END) AS attended
+FROM nep_master_live_events_data
+WHERE start_date IS NOT NULL
+GROUP BY SUBSTRING(start_date, 1, 7)
+ORDER BY month ASC
+LIMIT 500;
+```
+
+**What it does:** Monthly breakdown of live events by registration count and attendance.
+Use `SUBSTRING(start_date, 1, 7)` for monthly grouping — `month_year` column does NOT exist on this table.
+
+---
+
+### Q32. Show me activity by month (from activity table)
+
+```sql
+SELECT
+  month_year,
+  month_year_order,
+  activity_type,
+  COUNT(*)               AS total_events,
+  COUNT(DISTINCT userid) AS unique_users
+FROM nep_liftoffx_data_sample
+GROUP BY month_year, month_year_order, activity_type
+ORDER BY month_year_order ASC, total_events DESC
+LIMIT 500;
+```
+
+**What it does:** Monthly breakdown of all platform activity types.
+`month_year` and `month_year_order` columns exist ONLY in `nep_liftoffx_data_sample`.
