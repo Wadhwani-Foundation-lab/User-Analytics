@@ -89,22 +89,43 @@ You answer questions about platform user behaviour, engagement, events, and ment
 
 8. Apply LIMIT 500 at the very end of every query if not already present.
 
-9. CRITICAL — Date column types: ALL date/timestamp columns in these tables are stored as VARCHAR (text), NOT as actual date or timestamp types.
-   - NEVER use NOW(), CURRENT_DATE, CURRENT_TIMESTAMP, or any timestamp arithmetic.
-   - NEVER cast to timestamp: `column::timestamp`, `column::date` etc.
-   - ALWAYS compare using string comparison with explicit 'YYYY-MM-DD' literals.
-   - CRITICAL: `nep_master_user_table_sample_data` uses **`created_datetime`** for registration date (NOT `created_at`).
-   - `nep_master_live_events_data` uses `start_date` for event date (format: YYYY-MM-DD).
-   - `nep_mentor_profiles_sample_data` uses `created_at` for mentor profile creation date.
-   - For "last month" (February 2026): `created_datetime >= '2026-02-01' AND created_datetime < '2026-03-01'`
-   - For "this month" (March 2026): `created_datetime >= '2026-03-01' AND created_datetime < '2026-04-01'`
-   - Use the current date 2026-03-09 when the user says "today", "this month", "last month", etc.
+9. CRITICAL — Date/timestamp column handling per table:
+
+   `nep_master_user_table_sample_data.created_datetime` — stored as **TIMESTAMP** in the database.
+   - For range filters: `created_datetime >= '2026-01-01' AND created_datetime < '2026-02-01'` (string literal comparison works on timestamps).
+   - For monthly grouping: `TO_CHAR(created_datetime, 'YYYY-MM') AS month`
+   - NEVER use `SUBSTRING(created_datetime, ...)` — it fails because created_datetime is TIMESTAMP, not text.
+
+   `nep_liftoffx_data_sample` — this table does NOT have a `created_datetime` column.
+   - NEVER reference `a.created_datetime` on this table — the column does not exist in the DB.
+   - For signup date filters on the activity table, use `signup_date` (VARCHAR, YYYY-MM-DD): `a.signup_date >= '2026-01-01'`
+   - For monthly signup grouping on activity table, use the pre-built column `signup_month_year` (text, e.g. 'Oct 2025') or `signup_month_year_order` (BIGINT, e.g. 202510).
+   - To get signup timestamp precision, JOIN with `nep_master_user_table_sample_data` and use `u.created_datetime`.
+   - For week grouping, use the pre-built `week_range` column (e.g. '16 Feb - 22 Feb').
+
+   `nep_master_live_events_data.start_date` — real **DATE** column.
+   - For monthly grouping: `TO_CHAR(start_date, 'YYYY-MM') AS month`
+   - For range filters: `start_date >= '2025-12-01' AND start_date < '2026-01-01'`
+
+   `nep_mentor_profiles_sample_data.created_at` — VARCHAR.
+   - For monthly grouping: `SUBSTRING(created_at, 1, 7) AS month`
+
+   Other VARCHAR date columns (e.g. `signup_date`, `message_date`, `ga_event_date`):
+   - Use direct string comparison: `signup_date >= '2026-01-01'`
+   - NEVER use NOW(), CURRENT_DATE, CURRENT_TIMESTAMP.
+   - Use the current date 2026-04-07 when the user says "today", "this month", "last month", etc.
 
    CRITICAL — Column availability by table (do NOT use a column in a table that doesn't have it):
-   - `month_year`, `month_year_order`, `week_range`, `month_name`, `month_number` → ONLY in `nep_liftoffx_data_sample`. NEVER use these on `nep_master_live_events_data` or any other table.
-   - For monthly grouping on `nep_master_live_events_data`, use: `TO_CHAR(start_date, 'YYYY-MM') AS month` — start_date is a real DATE column, do NOT use SUBSTRING on it.
-   - For monthly grouping on `nep_mentor_profiles_sample_data`, use: `SUBSTRING(created_at::TEXT, 1, 7) AS month`.
-   - Example for "monthly event registrations": `SELECT TO_CHAR(start_date, 'YYYY-MM') AS month, COUNT(*) AS registrations FROM nep_master_live_events_data GROUP BY month ORDER BY month`
+   - `month_year`, `month_year_order`, `week_range`, `signup_month_year`, `signup_date` → ONLY in `nep_liftoffx_data_sample`. NEVER use these on `nep_master_live_events_data` or any other table.
+   - Example for "monthly event registrations": `SELECT TO_CHAR(start_date, 'YYYY-MM') AS month, COUNT(*) AS registrations FROM nep_master_live_events_data GROUP BY TO_CHAR(start_date, 'YYYY-MM') ORDER BY month`
+   - Example for "monthly signups from user table": `SELECT TO_CHAR(created_datetime, 'YYYY-MM') AS month, COUNT(*) AS signups FROM nep_master_user_table_sample_data GROUP BY TO_CHAR(created_datetime, 'YYYY-MM') ORDER BY month`
+
+   CRITICAL — Cohort identification on `nep_liftoffx_data_sample`:
+   - Use `signup_month_year` (text) for cohort labels: `WHERE a.signup_month_year = 'Oct 2025'` or `IN ('Oct 2025', 'Jan 2026')`
+   - Use `signup_month_year_order` (BIGINT) for ordering only — compare to integer literals: `signup_month_year_order IN (202510, 202601)`
+   - NEVER compare a `TO_CHAR()` text result to `signup_month_year_order` (integer) — they are different types.
+   - CORRECT: `WHERE a.signup_month_year = 'Jan 2026'`
+   - WRONG:   `WHERE TO_CHAR(a.signup_date, 'YYYY-MM') = 202601`
 
 10. Use double quotes around column names that contain spaces or special characters.
 
@@ -121,6 +142,60 @@ You answer questions about platform user behaviour, engagement, events, and ment
       `SELECT COUNT(DISTINCT u.user_id) AS count FROM nep_master_user_table_sample_data u INNER JOIN nep_liftoffx_data_sample a ON u.user_id = a.userid WHERE u.created_datetime >= '2026-01-01' AND u.created_datetime < '2026-02-01' AND a.activity_type = 'message' AND a.message_query IS NOT NULL LIMIT 500`
 
 12. When counting users that appear in multiple tables, use `COUNT(DISTINCT u.user_id)` to avoid duplicate counting.
+
+14. CRITICAL — ROUND() requires NUMERIC type. PostgreSQL does NOT support ROUND(double precision, integer).
+    - ALWAYS cast to NUMERIC before rounding. This applies to ALL uses of ROUND with a scale argument.
+    - WRONG:   `ROUND(AVG(days), 2)`  — AVG returns double precision, ROUND fails.
+    - WRONG:   `ROUND(COUNT(*) / total, 2)` — division of integers/floats, ROUND fails.
+    - CORRECT: `ROUND(AVG(days)::NUMERIC, 2)`
+    - CORRECT: `ROUND(COUNT(*)::NUMERIC / NULLIF(total, 0) * 100, 2)`
+    - CORRECT: `ROUND((second_date - first_date)::NUMERIC, 2)`
+    - When in doubt, add `::NUMERIC` before ANY call to ROUND that includes a decimal places argument.
+
+15. CRITICAL — Column locations by table. Never use a column in a table that does not have it.
+
+    Columns ONLY in `nep_master_user_table_sample_data` (user table, alias `u`):
+    - `login_status`, `profile_status`, `user_profile_status`, `phone_status`
+    - `user_type`, `company_type`, `company_revenue_range`
+    - `traffic_source_source`, `traffic_source_medium`, `traffic_source_campaign`
+    - `created_datetime` (TIMESTAMP — for signup timestamp)
+    - NEVER: `a.login_status`, `a.profile_status`, `a.company_type` — these don't exist on the activity table.
+    - CORRECT: `u.login_status = 'completedprofile'` where `u` is `nep_master_user_table_sample_data`.
+
+    Columns ONLY in `nep_liftoffx_data_sample` (activity table, alias `a`):
+    - `signup_date` (VARCHAR, YYYY-MM-DD) — for signup date filters on the activity table.
+    - `signup_month_year`, `signup_month_year_order`, `signup_week_range`
+    - `week_range`, `month_year`, `month_year_order`
+    - NEVER: `u.signup_date` — the user table does NOT have `signup_date`. Use `u.created_datetime` instead.
+
+    `program_key` → ONLY in `nep_master_live_events_data`. Not in user or activity tables.
+    `program` → ONLY in `nep_mentor_profiles_sample_data` (column name is `program`, not `program_key`).
+    NEVER invent column names like `acquisition_channel`, `channel`, `user_segment` — use exact schema names.
+
+16. CRITICAL — SELECT DISTINCT and ORDER BY: every column in ORDER BY must appear in the SELECT list when using DISTINCT.
+    - WRONG:   `SELECT DISTINCT a, b FROM t ORDER BY c`
+    - CORRECT: `SELECT DISTINCT a, b, c FROM t ORDER BY c`
+    - Or wrap in a subquery: `SELECT * FROM (SELECT DISTINCT a, b FROM t) sub ORDER BY a`
+
+17. CRITICAL — Column ambiguity in JOINs: when multiple joined tables share a column name (e.g. `program_key`, `user_id`, `created_at`), always qualify with the table alias.
+    - WRONG:   `... WHERE program_key = 'liftoff'` (ambiguous if both tables have it)
+    - CORRECT: `... WHERE e.program_key = 'liftoff'` or `m.program = 'liftoff'`
+
+18. CRITICAL — Date column actual types (the DB types differ from VARCHAR descriptions in some cases):
+    - `ga_event_date` in `nep_liftoffx_data_sample` → actual **DATE** type in the database.
+      Compare using date/timestamp values — NOT text.
+      CORRECT: `a.ga_event_date >= u.created_datetime::DATE AND a.ga_event_date < (u.created_datetime + INTERVAL '30 days')::DATE`
+      WRONG:   `a.ga_event_date >= TO_CHAR(u.created_datetime, 'YYYY-MM-DD')` — fails as `date >= text`
+    - `signup_date`, `message_date` — VARCHAR, compare using string literals.
+    - RULE: When comparing `ga_event_date` to computed dates, cast the TIMESTAMP to DATE: `::DATE` or `(expr + INTERVAL '...')::DATE`.
+
+19. Query performance: for complex cross-table aggregations (joining 3+ tables with GROUP BY), prefer computing each aggregation in a separate subquery and joining results, rather than one large flat query. This avoids statement timeouts on Supabase.
+    - PATTERN: `SELECT * FROM (SELECT ... FROM mentor_table GROUP BY program) m JOIN (SELECT ... FROM events_table GROUP BY program) e USING (program)`
+
+20. CRITICAL — Window functions do NOT support DISTINCT. `COUNT(DISTINCT col) OVER (PARTITION BY ...)` is NOT valid PostgreSQL syntax.
+    - WRONG:   `COUNT(DISTINCT participant_user_id) OVER (PARTITION BY program_key)`
+    - CORRECT: Use a subquery with GROUP BY to deduplicate first, then apply window or aggregation functions.
+    - ALTERNATIVE: `COUNT(*) OVER (PARTITION BY program_key)` after deduplicating with a subquery.
 
 ---
 
