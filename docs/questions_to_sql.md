@@ -1091,3 +1091,94 @@ LIMIT 500;
 **What it does:** Shows how many users have completed their profile vs remain in intermediate states — useful for onboarding funnel health checks.
 
 ---
+
+### Q33. Funnel drop-off by user journey stage (CRITICAL join pattern for profile/login status)
+
+**Important:** `login_status` and `profile_status` are ONLY in `nep_master_user_table_sample_data` (alias `u`). NEVER access them via the activity table alias (`a`). Always JOIN and use `u.login_status`.
+
+```sql
+SELECT
+  SUM(CASE WHEN a.activity_tittle = 'homepage_landed' THEN 1 ELSE 0 END)  AS homepage_visits,
+  SUM(CASE WHEN a.activity_tittle = 'onboarding_skip_clicked' THEN 1 ELSE 0 END) AS onboarding_step,
+  COUNT(DISTINCT CASE WHEN u.login_status = 'completedprofile' THEN u.user_id END) AS completed_profile,
+  COUNT(DISTINCT CASE WHEN a.activity_type = 'message' THEN a.userid END) AS sent_ai_message
+FROM nep_liftoffx_data_sample a
+JOIN nep_master_user_table_sample_data u ON a.userid = u.user_id
+WHERE u.company_type = 'msme'
+  AND u.company_revenue_range = 'pre-revenue'
+  AND u.traffic_source_medium = 'Emailer'
+LIMIT 500;
+```
+
+**Note:** `u.login_status` ✓ is correct. `a.login_status` ✗ does NOT exist — always qualify with the user table alias.
+
+---
+
+### Q34. Time between signup and first AI message (ROUND pattern with ::NUMERIC cast)
+
+**Important:** `ROUND()` requires NUMERIC type. Always cast: `ROUND(AVG(...)::NUMERIC, 2)`.
+
+```sql
+SELECT
+  u.company_revenue_range,
+  COUNT(DISTINCT u.user_id) AS users,
+  ROUND(AVG(
+    (SELECT MIN(a2.message_date)
+     FROM nep_liftoffx_data_sample a2
+     WHERE a2.userid = u.user_id
+       AND a2.activity_type = 'message'
+       AND a2.message_query IS NOT NULL
+    )::DATE - u.created_datetime::DATE
+  )::NUMERIC, 1) AS avg_days_to_first_message
+FROM nep_master_user_table_sample_data u
+WHERE u.company_revenue_range IS NOT NULL
+GROUP BY u.company_revenue_range
+ORDER BY avg_days_to_first_message
+LIMIT 500;
+```
+
+**Note:** `ROUND(AVG(...)::NUMERIC, 1)` — the `::NUMERIC` cast before `ROUND` is mandatory.
+
+**Note for signup_date column location:** `signup_date` is in `nep_liftoffx_data_sample` ONLY. The user table (`nep_master_user_table_sample_data`) does NOT have `signup_date` — use `u.created_datetime` for signup timestamp.
+
+---
+
+---
+
+### Q31. Give me a monthly event chart by registrations
+
+```sql
+SELECT
+  TO_CHAR(start_date, 'YYYY-MM')  AS month,
+  COUNT(DISTINCT event_id)      AS total_events,
+  COUNT(*)                      AS total_registrations,
+  SUM(CASE WHEN participant_status = 'ATTENDED' THEN 1 ELSE 0 END) AS attended
+FROM nep_master_live_events_data
+WHERE start_date IS NOT NULL
+GROUP BY TO_CHAR(start_date, 'YYYY-MM')
+ORDER BY month ASC
+LIMIT 500;
+```
+
+**What it does:** Monthly breakdown of live events by registration count and attendance.
+Use `TO_CHAR(start_date, 'YYYY-MM')` for monthly grouping — `month_year` column does NOT exist on this table.
+
+---
+
+### Q32. Show me activity by month (from activity table)
+
+```sql
+SELECT
+  month_year,
+  month_year_order,
+  activity_type,
+  COUNT(*)               AS total_events,
+  COUNT(DISTINCT userid) AS unique_users
+FROM nep_liftoffx_data_sample
+GROUP BY month_year, month_year_order, activity_type
+ORDER BY month_year_order ASC, total_events DESC
+LIMIT 500;
+```
+
+**What it does:** Monthly breakdown of all platform activity types.
+`month_year` and `month_year_order` columns exist ONLY in `nep_liftoffx_data_sample`.

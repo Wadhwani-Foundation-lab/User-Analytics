@@ -137,7 +137,7 @@
 | `user_last_name` | VARCHAR | User's last name. | `G` |
 | `company_type` | VARCHAR | User's company type at time of activity. | `msme`, `startup`, `NULL` |
 | `company_revenue_range` | VARCHAR | User's company revenue range. | `pre-revenue`, `above-5-crore`, `NULL` |
-| `created_datetime` | VARCHAR | Full timestamp of user account creation. Format: `YYYY-MM-DD HH:MM:SS`. Use this column for date range filters on registration date. | `2025-09-30 06:02:09.88` |
+| ~~`created_datetime`~~ | — | **This column does NOT exist in `nep_liftoffx_data_sample`.** Use `signup_date` for signup date filters, or join with `nep_master_user_table_sample_data` for `u.created_datetime`. | — |
 | `activity_id` | VARCHAR | Unique identifier for this specific activity event (composite string). | `17713075002083751771307441` |
 | `activity_type` | VARCHAR | Broad category of the activity. **Exact values in the DB:** `'message'` (AI chat — user asked a question), `'mentor'` (mentor session), `'session'` (live event attendance), `'resource'` (resource/content view), `'visitors'` (site visit), `'repeat visitors'` (return visit), `'signup'` (new registration), `'jounrney_explore'` (learning path — note DB typo), `'introductory_video_reg_users'` (intro video view). **NEVER use** `'ai_chat'`, `'mentor_session'`, `'live_event'`, or `'resource_view'` — they do not exist. | `'message'`, `'visitors'`, `'mentor'` |
 | `activity_tittle` | VARCHAR | Specific name of the activity *(note: typo in original — double 't')*. Maps to GA4 event names for visitor events. | `homepage_landed`, `onboarding_skip_clicked`, `page_view`, `profile_change_language_clicked` |
@@ -169,7 +169,7 @@
 | `expert_session_topic` | DOUBLE PRECISION | Topic of the expert session. | `NULL` |
 | `ga_session_id` | DOUBLE PRECISION | Google Analytics 4 session ID. Groups all events in a single browser session. | `1771307441.0` |
 | `ga_event_name` | VARCHAR | GA4 event name tracking specific user actions on the platform. | `homepage_landed`, `onboarding_skip_clicked`, `page_view`, `profile_change_language_clicked` |
-| `ga_event_date` | VARCHAR | Date of the GA4 event (YYYY-MM-DD). | `2026-02-17` |
+| `ga_event_date` | DATE | Date of the GA4 event (actual DATE type, not VARCHAR). Compare with date values: `a.ga_event_date >= u.created_datetime::DATE`. | `2026-02-17` |
 | `user_type` | VARCHAR | User classification (Internal staff or External entrepreneur). | `External Users`, `Internal Users` |
 | `traffic_source_source` | VARCHAR | UTM source for the session acquisition. | `EEPC`, `ACIC BMU`, `NULL` |
 | `traffic_source_medium` | VARCHAR | UTM medium for the session. | `Emailer`, `Email`, `NULL` |
