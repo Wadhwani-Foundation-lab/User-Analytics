@@ -1182,3 +1182,228 @@ LIMIT 500;
 
 **What it does:** Monthly breakdown of all platform activity types.
 `month_year` and `month_year_order` columns exist ONLY in `nep_liftoffx_data_sample`.
+
+---
+
+### Q35. Cross-program comparison: mentors, events, and beneficiaries (separate subqueries pattern)
+
+**CRITICAL pattern: When aggregating across 3+ tables, use separate subqueries per table and JOIN results. Never try to do it in one flat query — it times out on Supabase.**
+
+```sql
+SELECT
+  p.program_key,
+  COALESCE(m.active_mentors, 0) AS active_mentors,
+  COALESCE(e.completed_events, 0) AS completed_events,
+  COALESCE(b.registered_beneficiaries, 0) AS registered_beneficiaries
+FROM (SELECT DISTINCT program_key FROM nep_master_live_events_data) p
+LEFT JOIN (
+  SELECT program, COUNT(DISTINCT user_id) AS active_mentors
+  FROM nep_mentor_profiles_sample_data
+  WHERE user_status = 'ACTIVE' AND deleted = false
+  GROUP BY program
+) m ON p.program_key = m.program
+LEFT JOIN (
+  SELECT program_key, COUNT(DISTINCT event_id) AS completed_events
+  FROM nep_master_live_events_data
+  WHERE event_status = 'COMPLETED'
+  GROUP BY program_key
+) e ON p.program_key = e.program_key
+LEFT JOIN (
+  SELECT program_key, COUNT(DISTINCT participant_user_id) AS registered_beneficiaries
+  FROM nep_master_live_events_data
+  GROUP BY program_key
+) b ON p.program_key = b.program_key
+ORDER BY p.program_key
+LIMIT 500;
+```
+
+**What it does:** Each table is aggregated independently in its own subquery, then joined. This avoids cartesian explosions and statement timeouts.
+
+---
+
+### Q36. Participants attending events across multiple programs (NO window DISTINCT)
+
+**CRITICAL: `COUNT(DISTINCT col) OVER(...)` is NOT supported in PostgreSQL. Always use GROUP BY subquery first.**
+
+```sql
+SELECT
+  participant_user_id,
+  MAX(participant_first_name) AS first_name,
+  MAX(participant_last_name) AS last_name,
+  COUNT(DISTINCT program_key) AS programs_count,
+  COUNT(DISTINCT event_id) AS total_events,
+  STRING_AGG(DISTINCT program_key, ', ') AS programs
+FROM nep_master_live_events_data
+WHERE participant_status = 'ATTENDED'
+GROUP BY participant_user_id
+HAVING COUNT(DISTINCT program_key) > 1
+ORDER BY total_events DESC
+LIMIT 500;
+```
+
+**What it does:** Uses GROUP BY + HAVING instead of window functions with DISTINCT. Never use `COUNT(DISTINCT x) OVER(PARTITION BY y)`.
+
+---
+
+### Q37. Time between signup and first AI message by revenue range (optimized for performance)
+
+**CRITICAL: For "time-to-first-X" queries, pre-aggregate the first activity date per user, then JOIN to avoid correlated subqueries that timeout.**
+
+```sql
+SELECT
+  a.company_revenue_range,
+  COUNT(DISTINCT a.userid) AS users,
+  ROUND(AVG(first_msg.first_message_date - a.signup_date)::NUMERIC, 1) AS avg_days_to_first_message
+FROM nep_liftoffx_data_sample a
+JOIN (
+  SELECT userid, MIN(message_date) AS first_message_date
+  FROM nep_liftoffx_data_sample
+  WHERE activity_type = 'message' AND message_query IS NOT NULL
+  GROUP BY userid
+) first_msg ON a.userid = first_msg.userid
+WHERE a.company_revenue_range IS NOT NULL
+  AND a.activity_type = 'signup'
+GROUP BY a.company_revenue_range
+ORDER BY avg_days_to_first_message
+LIMIT 500;
+```
+
+**What it does:** Pre-aggregates `MIN(message_date)` per user in a subquery, then joins — much faster than correlated subqueries. Uses `signup_date` (DATE) from the activity table directly.
+
+---
+
+### Q38. Users with multiple activity types in the same month (performance pattern)
+
+**CRITICAL: For questions about "users who did X AND Y in the same month", use INTERSECT or inner JOINs on pre-aggregated subqueries, not correlated EXISTS on the full 154K-row activity table.**
+
+```sql
+SELECT COUNT(*) AS users_count
+FROM (
+  SELECT userid, month_year
+  FROM nep_liftoffx_data_sample
+  WHERE activity_type = 'repeat visitors' AND company_type = 'startup'
+  GROUP BY userid, month_year
+) rv
+JOIN (
+  SELECT userid, month_year
+  FROM nep_liftoffx_data_sample
+  WHERE ga_event_name = 'mentors_tab_clicked' AND company_type = 'startup'
+  GROUP BY userid, month_year
+) mt ON rv.userid = mt.userid AND rv.month_year = mt.month_year
+LIMIT 500;
+```
+
+**What it does:** Pre-filters each condition into small result sets, then joins, avoiding full table scans.
+
+---
+
+### Q39. Funnel drop-off across journey stages (correct UNION pattern)
+
+**CRITICAL: ORDER BY cannot appear inside UNION members. Wrap the entire UNION in a subquery first.**
+
+```sql
+SELECT * FROM (
+  SELECT 1 AS step_order, 'Signups' AS stage, COUNT(DISTINCT userid) AS users
+  FROM nep_liftoffx_data_sample
+  WHERE activity_type = 'signup' AND company_type = 'msme' AND company_revenue_range = 'pre-revenue' AND traffic_source_medium = 'Emailer'
+  UNION ALL
+  SELECT 2, 'Homepage Visit', COUNT(DISTINCT userid)
+  FROM nep_liftoffx_data_sample
+  WHERE ga_event_name = 'homepage_landed' AND company_type = 'msme' AND company_revenue_range = 'pre-revenue' AND traffic_source_medium = 'Emailer'
+  UNION ALL
+  SELECT 3, 'Onboarding', COUNT(DISTINCT userid)
+  FROM nep_liftoffx_data_sample
+  WHERE ga_event_name = 'onboarding_next_clicked' AND company_type = 'msme' AND company_revenue_range = 'pre-revenue' AND traffic_source_medium = 'Emailer'
+  UNION ALL
+  SELECT 4, 'First AI Message', COUNT(DISTINCT userid)
+  FROM nep_liftoffx_data_sample
+  WHERE activity_type = 'message' AND message_query IS NOT NULL AND company_type = 'msme' AND company_revenue_range = 'pre-revenue' AND traffic_source_medium = 'Emailer'
+) AS funnel
+ORDER BY step_order
+LIMIT 500;
+```
+
+**What it does:** Builds a funnel by counting users at each stage in separate queries, combines via UNION ALL, then orders the combined result. The ORDER BY is on the outer query, not inside the UNION.
+
+---
+
+### Q40. Signup-to-first-activity conversion time by traffic source (optimized)
+
+**CRITICAL: Same as Q37 — pre-aggregate MIN(date) per user, then JOIN. Never use correlated subqueries.**
+
+```sql
+SELECT
+  a.traffic_source_source,
+  COUNT(DISTINCT a.userid) AS users,
+  ROUND(AVG(fa.first_activity - a.signup_date)::NUMERIC, 1) AS avg_days_to_first_activity
+FROM nep_liftoffx_data_sample a
+JOIN (
+  SELECT userid, MIN(ga_event_date) AS first_activity
+  FROM nep_liftoffx_data_sample
+  WHERE ga_event_date IS NOT NULL
+  GROUP BY userid
+) fa ON a.userid = fa.userid
+WHERE a.activity_type = 'signup'
+  AND a.company_revenue_range = 'pre-revenue'
+  AND a.traffic_source_source IS NOT NULL
+GROUP BY a.traffic_source_source
+ORDER BY avg_days_to_first_activity
+LIMIT 500;
+```
+
+**What it does:** Pre-aggregates first activity date per user in subquery, then joins to avoid correlated subqueries that timeout.
+
+---
+
+### Q41. Cross-table comparison: mentors, events, and signups by program
+
+**CRITICAL: Use separate subqueries per table, JOIN by program. Mentor table uses `program`, events table uses `program_key`.**
+
+```sql
+SELECT
+  COALESCE(m.prog, e.prog) AS program,
+  COALESCE(m.active_mentors, 0) AS active_mentors,
+  COALESCE(e.completed_events, 0) AS completed_events,
+  COALESCE(e.total_attended, 0) AS total_attended
+FROM (
+  SELECT program AS prog, COUNT(*) AS active_mentors
+  FROM nep_mentor_profiles_sample_data
+  WHERE user_status = 'ACTIVE' AND deleted = false
+  GROUP BY program
+) m
+FULL OUTER JOIN (
+  SELECT program_key AS prog,
+    COUNT(DISTINCT event_id) AS completed_events,
+    SUM(CASE WHEN participant_status = 'ATTENDED' THEN 1 ELSE 0 END) AS total_attended
+  FROM nep_master_live_events_data
+  WHERE event_status = 'COMPLETED'
+  GROUP BY program_key
+) e ON m.prog = e.prog
+ORDER BY program
+LIMIT 500;
+```
+
+**What it does:** Aggregates mentors and events separately by program, then JOINs results. Uses `program` from mentors and `program_key` from events, aliased to a common name for the JOIN.
+
+---
+
+### Q42. Finding mentors who are also event speakers
+
+**CRITICAL: No direct FK between mentors and events. Match by name or email, never by `m.user_id = e.speaker_email`.**
+
+```sql
+SELECT
+  m.first_name || ' ' || m.last_name AS mentor_name,
+  m.program,
+  m.mentor_type,
+  m.industry_name,
+  COUNT(DISTINCT e.event_id) AS events_as_speaker
+FROM nep_mentor_profiles_sample_data m
+JOIN nep_master_live_events_data e ON m.email = e.speaker_email
+WHERE m.user_status = 'ACTIVE' AND m.deleted = false
+GROUP BY m.first_name, m.last_name, m.program, m.mentor_type, m.industry_name
+ORDER BY events_as_speaker DESC
+LIMIT 500;
+```
+
+**What it does:** Joins mentors to events via email matching (speaker_email = mentor email). Never use user_id = speaker_email — they're different types.
