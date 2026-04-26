@@ -1407,3 +1407,321 @@ LIMIT 500;
 ```
 
 **What it does:** Joins mentors to events via email matching (speaker_email = mentor email). Never use user_id = speaker_email — they're different types.
+
+---
+
+### Q43. Weekly active user trend (include ALL activity types)
+
+**CRITICAL: "Active users" means users with ANY activity, not just AI messages. Do NOT filter by activity_type.**
+
+```sql
+SELECT
+  a.week_range,
+  a.month_year_order,
+  a.company_type,
+  a.company_revenue_range,
+  COUNT(DISTINCT a.userid) AS weekly_active_users
+FROM nep_liftoffx_data_sample a
+WHERE a.user_type = 'External Users'
+  AND a.ga_event_date >= '2026-02-01'
+  AND a.ga_event_date < '2026-03-01'
+  AND a.company_type IS NOT NULL
+  AND a.company_revenue_range IS NOT NULL
+GROUP BY a.week_range, a.month_year_order, a.company_type, a.company_revenue_range
+ORDER BY a.month_year_order, a.week_range
+LIMIT 500;
+```
+
+**What it does:** Counts ALL users with any activity per week. No activity_type filter — "active" means any engagement.
+
+---
+
+### Q44. Event registration-to-attendance conversion (consistent aggregation)
+
+**CRITICAL: Use COUNT(DISTINCT CASE WHEN ...) for both metrics to avoid mixing row counts with distinct counts.**
+
+```sql
+SELECT
+  u.company_type,
+  COUNT(DISTINCT e.participant_user_id) AS registered_participants,
+  COUNT(DISTINCT CASE WHEN e.participant_status = 'ATTENDED' THEN e.participant_user_id END) AS attended_participants,
+  ROUND(
+    COUNT(DISTINCT CASE WHEN e.participant_status = 'ATTENDED' THEN e.participant_user_id END)::NUMERIC
+    / NULLIF(COUNT(DISTINCT e.participant_user_id), 0) * 100, 2
+  ) AS conversion_rate_pct
+FROM nep_master_live_events_data e
+JOIN nep_master_user_table_sample_data u ON e.participant_user_id = u.user_id
+WHERE u.company_type IS NOT NULL
+GROUP BY u.company_type
+ORDER BY conversion_rate_pct DESC
+LIMIT 500;
+```
+
+**What it does:** Calculates conversion using COUNT DISTINCT for both registered and attended, avoiding mismatched aggregation.
+
+---
+
+### Q45. Cross-reference mentor industries with event gap areas (different dimensions)
+
+**CRITICAL: industry_name and gapkey are DIFFERENT dimensions — never compare with = or JOIN ON. Present side-by-side per program.**
+
+```sql
+SELECT * FROM (
+  SELECT program AS prog, 'mentor_industries' AS source, industry_name AS category,
+    COUNT(DISTINCT user_id) AS count
+  FROM nep_mentor_profiles_sample_data
+  WHERE user_status = 'ACTIVE' AND deleted = false AND industry_name IS NOT NULL
+  GROUP BY program, industry_name
+  UNION ALL
+  SELECT program_key AS prog, 'event_gap_areas' AS source, gapkey AS category,
+    COUNT(DISTINCT event_id) AS count
+  FROM nep_master_live_events_data
+  WHERE event_status = 'COMPLETED' AND gapkey IS NOT NULL
+  GROUP BY program_key, gapkey
+) AS combined
+ORDER BY prog, source, count DESC
+LIMIT 500;
+```
+
+**What it does:** Presents mentor industries and event gap areas as separate rows per program. Does NOT try to match/compare industry_name with gapkey — they're different dimensions.
+
+---
+
+### Q46. Signup-to-first-message time by revenue range (optimized for 8s timeout)
+
+**CRITICAL: Use activity table's signup_date for signup timing, pre-aggregate first message per user, then JOIN. Never use correlated subqueries.**
+
+```sql
+SELECT
+  a.company_revenue_range,
+  COUNT(DISTINCT a.userid) AS users,
+  ROUND(AVG(fm.first_msg - a.signup_date)::NUMERIC, 1) AS avg_days_to_first_message
+FROM nep_liftoffx_data_sample a
+JOIN (
+  SELECT userid, MIN(message_date) AS first_msg
+  FROM nep_liftoffx_data_sample
+  WHERE activity_type = 'message' AND message_query IS NOT NULL AND message_date IS NOT NULL
+  GROUP BY userid
+) fm ON a.userid = fm.userid
+WHERE a.activity_type = 'signup'
+  AND a.company_revenue_range IS NOT NULL
+GROUP BY a.company_revenue_range
+ORDER BY avg_days_to_first_message
+LIMIT 500;
+```
+
+**What it does:** Pre-aggregates first message date per user, then joins with signup records. Uses signup_date from activity table. Avoids correlated subqueries that timeout.
+
+---
+
+### Q47. End-to-end funnel by traffic source (optimized for 8s timeout)
+
+**CRITICAL: Use separate COUNT subqueries per funnel step, then JOIN. Never nest multiple JOINs in one query for funnel analysis.**
+
+```sql
+SELECT
+  COALESCE(s.source, p.source, m.source, e.source) AS traffic_source,
+  COALESCE(s.signups, 0) AS signups,
+  COALESCE(p.profile_completions, 0) AS profile_completions,
+  COALESCE(m.first_messages, 0) AS first_messages,
+  COALESCE(e.event_participants, 0) AS event_participants
+FROM (
+  SELECT traffic_source_source AS source, COUNT(DISTINCT userid) AS signups
+  FROM nep_liftoffx_data_sample
+  WHERE activity_type = 'signup' AND traffic_source_source IS NOT NULL
+  GROUP BY traffic_source_source
+) s
+LEFT JOIN (
+  SELECT u.traffic_source_source AS source, COUNT(DISTINCT u.user_id) AS profile_completions
+  FROM nep_master_user_table_sample_data u
+  WHERE u.login_status = 'completedprofile' AND u.traffic_source_source IS NOT NULL
+  GROUP BY u.traffic_source_source
+) p ON s.source = p.source
+LEFT JOIN (
+  SELECT traffic_source_source AS source, COUNT(DISTINCT userid) AS first_messages
+  FROM nep_liftoffx_data_sample
+  WHERE activity_type = 'message' AND message_query IS NOT NULL AND traffic_source_source IS NOT NULL
+  GROUP BY traffic_source_source
+) m ON s.source = m.source
+LEFT JOIN (
+  SELECT u.traffic_source_source AS source, COUNT(DISTINCT e.participant_user_id) AS event_participants
+  FROM nep_master_live_events_data e
+  JOIN nep_master_user_table_sample_data u ON e.participant_user_id = u.user_id
+  WHERE e.participant_status = 'ATTENDED' AND u.traffic_source_source IS NOT NULL
+  GROUP BY u.traffic_source_source
+) e ON s.source = e.source
+ORDER BY signups DESC
+LIMIT 500;
+```
+
+**What it does:** Builds a funnel with separate subqueries per step, JOINed by traffic source. Each subquery is small and fast. Avoids cartesian explosions and timeouts.
+
+---
+
+### Q48. Event attendance breakdown by gap area with user demographics (safe JOIN pattern)
+
+**CRITICAL: When joining events to activity/user data, first deduplicate user attributes into a subquery to avoid many-to-many cartesian products.**
+
+```sql
+SELECT
+  e.gapkey AS gap_area,
+  ua.company_type,
+  ua.company_revenue_range,
+  COUNT(DISTINCT e.participant_user_id) AS users_attended
+FROM nep_master_live_events_data e
+JOIN (
+  SELECT DISTINCT userid, company_type, company_revenue_range
+  FROM nep_liftoffx_data_sample
+  WHERE company_type IS NOT NULL
+) ua ON e.participant_user_id = ua.userid
+WHERE e.participant_status = 'ATTENDED'
+  AND e.gapkey IS NOT NULL
+GROUP BY e.gapkey, ua.company_type, ua.company_revenue_range
+ORDER BY users_attended DESC
+LIMIT 500;
+```
+
+**What it does:** Joins events to unique user attributes (deduplicated first) to avoid inflated counts from many-to-many activity rows.
+
+---
+
+### Q49. No-show rate per speaker with total participants as denominator
+
+```sql
+SELECT
+  e.speaker_name,
+  COUNT(*) AS total_participants,
+  COUNT(*) FILTER (WHERE e.participant_status = 'ATTENDED') AS attended,
+  COUNT(*) FILTER (WHERE e.participant_status = 'NOSHOW') AS no_shows,
+  ROUND(COUNT(*) FILTER (WHERE e.participant_status = 'NOSHOW')::NUMERIC / NULLIF(COUNT(*), 0) * 100, 2) AS noshow_rate_pct
+FROM nep_master_live_events_data e
+WHERE e.speaker_name IS NOT NULL
+GROUP BY e.speaker_name
+ORDER BY noshow_rate_pct DESC
+LIMIT 500;
+```
+
+**What it does:** Calculates no-show rate using total participants (all statuses) as denominator, not just REGISTERED.
+
+---
+
+### Q50. Month-over-month growth rate using LAG (NO CTEs — use subquery wrapper)
+
+**CRITICAL: NEVER use WITH ... AS (CTEs). Use a subquery wrapper for window functions like LAG.**
+
+```sql
+SELECT
+  month,
+  signups,
+  LAG(signups) OVER (ORDER BY month) AS prev_month_signups,
+  ROUND(
+    (signups - LAG(signups) OVER (ORDER BY month))::NUMERIC
+    / NULLIF(LAG(signups) OVER (ORDER BY month), 0) * 100, 2
+  ) AS mom_growth_rate_pct
+FROM (
+  SELECT TO_CHAR(created_datetime, 'YYYY-MM') AS month, COUNT(*) AS signups
+  FROM nep_master_user_table_sample_data
+  WHERE user_type = 'External Users'
+    AND company_type = 'startup'
+    AND company_revenue_range = 'above-5-crore'
+  GROUP BY TO_CHAR(created_datetime, 'YYYY-MM')
+) monthly_data
+ORDER BY month
+LIMIT 500;
+```
+
+**What it does:** Month-over-month growth using LAG window function applied to a subquery result — NO CTE needed. The subquery computes monthly counts, the outer SELECT applies LAG.
+
+---
+
+### Q50b. Count users who attended/did X at least N times (correct subquery-HAVING pattern)
+
+**CRITICAL: `SELECT COUNT(DISTINCT col) ... GROUP BY col HAVING` is WRONG — returns 1 per group. Wrap in subquery.**
+
+```sql
+-- WRONG: SELECT COUNT(DISTINCT participant_user_id) FROM events GROUP BY participant_user_id HAVING COUNT(*) >= 2
+-- RIGHT: wrap the GROUP BY + HAVING in a subquery, then count the results
+
+SELECT COUNT(*) AS unique_participants
+FROM (
+  SELECT participant_user_id
+  FROM nep_master_live_events_data
+  WHERE LOWER(particpant_country) = 'india'
+    AND sessiontype = 'expertSession'
+    AND program_key = 'liftoff-propel'
+    AND start_date >= '2026-01-01' AND start_date < '2026-02-01'
+    AND participant_status = 'ATTENDED'
+  GROUP BY participant_user_id
+  HAVING COUNT(DISTINCT event_id) >= 2
+) qualifying_participants;
+```
+
+**What it does:** Finds unique users meeting a "at least N times" condition. Always wrap the GROUP BY + HAVING in a subquery, then COUNT(*) the outer result.
+
+---
+
+### Q51. User journey funnel percentage (NO CTEs — use subqueries)
+
+**CRITICAL: For multi-step funnels with percentages, use nested subqueries, NEVER CTEs.**
+
+```sql
+SELECT
+  s.total_signups,
+  p.profile_completions,
+  ROUND(p.profile_completions::NUMERIC / NULLIF(s.total_signups, 0) * 100, 2) AS profile_pct,
+  m.messaged_users,
+  ROUND(m.messaged_users::NUMERIC / NULLIF(s.total_signups, 0) * 100, 2) AS message_pct
+FROM (
+  SELECT COUNT(DISTINCT user_id) AS total_signups
+  FROM nep_master_user_table_sample_data
+  WHERE company_type = 'msme' AND traffic_source_medium = 'Email'
+    AND created_datetime >= '2026-01-01' AND created_datetime < '2026-02-01'
+) s
+CROSS JOIN (
+  SELECT COUNT(DISTINCT user_id) AS profile_completions
+  FROM nep_master_user_table_sample_data
+  WHERE company_type = 'msme' AND traffic_source_medium = 'Email'
+    AND created_datetime >= '2026-01-01' AND created_datetime < '2026-02-01'
+    AND login_status = 'completedprofile'
+) p
+CROSS JOIN (
+  SELECT COUNT(DISTINCT a.userid) AS messaged_users
+  FROM nep_liftoffx_data_sample a
+  WHERE a.company_type = 'msme' AND a.traffic_source_medium = 'Email'
+    AND a.signup_date >= '2026-01-01' AND a.signup_date < '2026-02-01'
+    AND a.activity_type = 'message'
+) m
+LIMIT 500;
+```
+
+**What it does:** Funnel analysis using CROSS JOIN of separate scalar subqueries. No CTEs needed.
+
+---
+
+### Q52. Event participants to registered beneficiaries ratio by program (correct approach)
+
+**CRITICAL: The activity/user table has NO program_key column. Use ONLY the events table for per-program analysis.
+"Registered beneficiaries" = all users who registered for events (any status). NEVER use traffic_source_campaign as a program proxy.**
+
+```sql
+SELECT
+  total.program_key,
+  total.registered_beneficiaries,
+  attended.event_participants,
+  ROUND(attended.event_participants::NUMERIC / NULLIF(total.registered_beneficiaries, 0) * 100, 2) AS participation_ratio_pct
+FROM (
+  SELECT program_key, COUNT(DISTINCT participant_user_id) AS registered_beneficiaries
+  FROM nep_master_live_events_data
+  GROUP BY program_key
+) total
+JOIN (
+  SELECT program_key, COUNT(DISTINCT participant_user_id) AS event_participants
+  FROM nep_master_live_events_data
+  WHERE participant_status = 'ATTENDED'
+  GROUP BY program_key
+) attended ON total.program_key = attended.program_key
+ORDER BY participation_ratio_pct DESC
+LIMIT 500;
+```
+
+**What it does:** Uses the events table for BOTH numerator (attended) and denominator (all registered). Program comes from `program_key` in events table only — NEVER use traffic_source_campaign as a program proxy.

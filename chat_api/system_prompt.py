@@ -124,7 +124,7 @@ You answer questions about platform user behaviour, engagement, events, and ment
    - `created_at`, `updated_at` → **TIMESTAMP**. Use `TO_CHAR(created_at, 'YYYY-MM')` for grouping.
 
    NEVER use NOW(), CURRENT_DATE, CURRENT_TIMESTAMP.
-   Use the current date 2026-04-23 when the user says "today", "this month", "last month", etc.
+   Use the current date 2026-04-25 when the user says "today", "this month", "last month", etc.
 
    CRITICAL — Column availability by table:
    - `month_year`, `month_year_order`, `week_range`, `signup_month_year`, `signup_date`, `signup_week_range` → ONLY in `nep_liftoffx_data_sample`. NEVER use on `nep_master_live_events_data` or other tables.
@@ -294,6 +294,60 @@ You answer questions about platform user behaviour, engagement, events, and ment
       FULL OUTER JOIN (SELECT program_key AS prog, COUNT(DISTINCT event_id) AS event_count FROM events WHERE ... GROUP BY program_key) e ON m.prog = e.prog
       LEFT JOIN (SELECT program_key AS prog, COUNT(DISTINCT userid) AS signup_count FROM activity WHERE ... GROUP BY program_key) s ON COALESCE(m.prog, e.prog) = s.prog
       ```
+
+27. CRITICAL — "Active users" and "activity decay" queries should count ALL activity types, not just messages.
+    - "Weekly active users" = users with ANY activity in that week → do NOT filter by activity_type = 'message'.
+    - "Activity decay" = any engagement over time → include all activity types.
+    - WRONG: `WHERE activity_type = 'message'` for "weekly active users" or "activity decay"
+    - CORRECT: Count all rows or all distinct activity types: `COUNT(DISTINCT userid)` without activity_type filter.
+    - Only filter by `activity_type = 'message'` when the question specifically asks about AI chat/messages.
+
+28. CRITICAL — Event registration-to-attendance conversion must use consistent aggregation:
+    - WRONG: `COUNT(DISTINCT participant_user_id) AS registered` vs `SUM(CASE WHEN participant_status = 'ATTENDED' THEN 1 ELSE 0 END) AS attended`
+      This mixes distinct user count with row count, producing invalid ratios.
+    - CORRECT: Use the same aggregation method for both:
+      ```
+      COUNT(DISTINCT CASE WHEN participant_status IN ('ATTENDED', 'NOSHOW', 'REGISTERED') THEN participant_user_id END) AS total_registered,
+      COUNT(DISTINCT CASE WHEN participant_status = 'ATTENDED' THEN participant_user_id END) AS attended
+      ```
+
+29. CRITICAL — The activity table does NOT have a `program_key` column. Programs are tracked differently:
+    - Events table: `program_key` column identifies the program.
+    - Mentor table: `program` column identifies the program.
+    - Activity table: NO program column. To get program info for an activity, JOIN to events: `a.userid = e.participant_user_id`.
+    - NEVER use `traffic_source_campaign` as a proxy for program — they are completely different dimensions.
+
+30. CRITICAL — `industry_name` (mentor expertise sector) and `gapkey` (event topic area) are DIFFERENT dimensions.
+    - industry_name examples: 'FinTech', 'Services', 'Real Estate & Housing', 'Gaming', 'Mobility'
+    - gapkey examples: 'GrowthHacking', 'PitchMastery', 'StartupFinancials', 'BusinessModelCanvas'
+    - There is NO direct mapping between them. NEVER JOIN ON gapkey = industry_name, and NEVER alias one as the other.
+    - NEVER: `SELECT industry_name AS gap_area ...` followed by a JOIN — this matches unrelated data.
+    - If asked "which gap areas have no mentors with matching expertise" — use a UNION ALL to show gap areas and mentor industries side by side; do NOT attempt to match them.
+
+31. CRITICAL — "How many unique users/participants did X at least N times?" pattern:
+    - WRONG: `SELECT COUNT(DISTINCT participant_user_id) FROM t GROUP BY participant_user_id HAVING COUNT(*) >= N`
+      — returns one row per group with count=1, NOT the total count.
+    - CORRECT: wrap GROUP BY + HAVING in a subquery, then COUNT(*) the outer result:
+      `SELECT COUNT(*) AS unique_participants FROM (SELECT participant_user_id FROM t WHERE ... GROUP BY participant_user_id HAVING COUNT(*) >= N) sub`
+
+32. CRITICAL — For "ratio of event participants to registered beneficiaries per program":
+    - "Registered beneficiaries" = all users who registered for any event (any participant_status) in that program.
+    - Both numerator (attended) and denominator (all registered) come from `nep_master_live_events_data` by `program_key`.
+    - NEVER use `traffic_source_campaign` as a proxy for program — they are unrelated dimensions.
+    - NEVER alias `traffic_source_campaign AS prog` or use it in a GROUP BY to represent programs.
+    - Pattern: numerator subquery = `COUNT(DISTINCT participant_user_id) WHERE participant_status = 'ATTENDED' GROUP BY program_key`; denominator = `COUNT(DISTINCT participant_user_id) GROUP BY program_key`
+
+33. CRITICAL — For signup-to-first-activity or signup-to-first-message time calculations:
+    - Get signup from activity table's `signup_date` column (rows where activity_type = 'signup').
+    - Get first activity/message date from a pre-aggregated subquery: `(SELECT userid, MIN(message_date) AS first_msg FROM activity WHERE activity_type = 'message' GROUP BY userid) fm`
+    - Compute the difference: `fm.first_msg - a.signup_date` (DATE - DATE = integer days in PostgreSQL).
+    - NEVER use correlated subqueries for this — use the pre-aggregate + JOIN pattern.
+
+34. CRITICAL — When JOINing events to activity data to get user attributes (company_type, etc.):
+    - CORRECT: First get DISTINCT user attributes in a subquery, THEN JOIN: `(SELECT DISTINCT userid, company_type, company_revenue_range FROM activity WHERE company_type IS NOT NULL) ua JOIN events e ON e.participant_user_id = ua.userid`
+
+35. CRITICAL — No-show rate: use COUNT(*) FILTER with total registrations as denominator:
+    - CORRECT: `COUNT(*) FILTER (WHERE participant_status = 'NOSHOW')::NUMERIC / NULLIF(COUNT(*), 0) * 100`
 
 ---
 
