@@ -25,6 +25,7 @@ from typing import Optional
 
 _MAX_ENTRIES = 500
 _CACHE_FILE = os.path.join(os.path.dirname(__file__), "sql_cache_store.json")
+_SEEDS_FILE = os.path.join(os.path.dirname(__file__), "sql_cache_seeds.json")
 
 _cache: OrderedDict[str, dict] = OrderedDict()
 _stats = {"hits": 0, "misses": 0, "evictions": 0}
@@ -140,5 +141,24 @@ def list_entries() -> list[dict]:
     ]
 
 
+def _load_seeds() -> None:
+    """Load pre-seeded SQL entries from sql_cache_seeds.json (committed to git)."""
+    if not os.path.exists(_SEEDS_FILE):
+        return
+    try:
+        with open(_SEEDS_FILE, "r", encoding="utf-8") as f:
+            seeds: dict = json.load(f)
+        count = 0
+        for key, entry in seeds.items():
+            if isinstance(entry, dict) and "sql" in entry and key not in _cache:
+                _cache[key] = {"sql": entry["sql"], "hits": 0, "added_at": 0}
+                count += 1
+        if count:
+            print(f"[CACHE] Loaded {count} seeded entries from {_SEEDS_FILE}")
+    except Exception as e:
+        print(f"[CACHE] Failed to load seeds: {e}")
+
+
 # ── Auto-load on import ────────────────────────────────────────────────────────
 _load()
+_load_seeds()  # Seeds override nothing — only fills gaps not already in cache

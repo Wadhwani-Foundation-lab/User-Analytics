@@ -1,0 +1,6 @@
+{
+  "how many unique participants from india attended at least 2 expert sessions in liftoff-propel during january 2026?": {
+    "sql": "SELECT COUNT(*) AS unique_participants\nFROM (\n  SELECT participant_user_id\n  FROM nep_master_live_events_data\n  WHERE LOWER(particpant_country) = 'india'\n    AND sessiontype = 'expertSession'\n    AND program_key = 'liftoff-propel'\n    AND start_date >= '2026-01-01'\n    AND start_date < '2026-02-01'\n    AND participant_status = 'ATTENDED'\n  GROUP BY participant_user_id\n  HAVING COUNT(DISTINCT event_id) >= 2\n) qualifying_participants\nLIMIT 500",
+    "note": "Correct pattern: wrap GROUP BY + HAVING in subquery, then COUNT(*) outer. Seeded because LLM generates COUNT(DISTINCT X) GROUP BY X which returns one row per user instead of total count."
+  }
+}
