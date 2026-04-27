@@ -146,6 +146,10 @@ def chat(req: ChatRequest, _: None = Depends(verify_api_key)):
             rows=[[row.get(c) for c in columns] for row in rows],
         )
 
+    elif response_type == "table" and not rows:
+        response_type = "text"
+        answer = "No data found for that query."
+
     elif response_type == "text":
         if rows:
             first_val = list(rows[0].values())[0] if rows[0] else None
