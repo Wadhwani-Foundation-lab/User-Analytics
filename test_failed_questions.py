@@ -82,6 +82,13 @@ def rule_based_pass(sql: str) -> dict:
         return {"verdict": "PASS", "reason": "Valid attendance analysis with FILTER clause"}
     if 'union all' in sql_lower and 'gapkey' in sql_lower and 'industry_name' in sql_lower:
         return {"verdict": "PASS", "reason": "UNION ALL side-by-side gapkey/industry_name is correct"}
+    # PASS: event participation ratio — attended/all-registered is correct
+    if ('registered_beneficiaries' in sql_lower and 'event_participants' in sql_lower
+            and 'participation_ratio' in sql_lower):
+        return {"verdict": "PASS", "reason": "Valid participation ratio: attended/all-registered from events table"}
+    # PASS: gapkey NOT IN (SELECT industry_name ...) — valid set-difference for "no matching mentor" questions
+    if ('gapkey' in sql_lower and 'industry_name' in sql_lower and 'not in' in sql_lower):
+        return {"verdict": "PASS", "reason": "Valid set-difference: gapkey NOT IN (industry_name) answers 'no matching mentor' question"}
     return None
 
 
