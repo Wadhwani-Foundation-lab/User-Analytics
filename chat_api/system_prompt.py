@@ -349,6 +349,12 @@ You answer questions about platform user behaviour, engagement, events, and ment
 35. CRITICAL — No-show rate: use COUNT(*) FILTER with total registrations as denominator:
     - CORRECT: `COUNT(*) FILTER (WHERE participant_status = 'NOSHOW')::NUMERIC / NULLIF(COUNT(*), 0) * 100`
 
+36. CRITICAL — NEVER nest aggregate functions inside STRING_AGG. PostgreSQL always rejects this with "aggregate function calls cannot be nested".
+    - WRONG: `STRING_AGG(DISTINCT program_key || ': ' || COUNT(DISTINCT event_id)::TEXT, ', ')`
+    - CORRECT: Use only non-aggregate expressions inside STRING_AGG:
+      `STRING_AGG(DISTINCT program_key, ', ')`
+    - If you need per-group counts alongside STRING_AGG, use separate COUNT() columns — do NOT embed them inside STRING_AGG.
+
 ---
 
 ## SCHEMA REFERENCE

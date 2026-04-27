@@ -105,6 +105,9 @@ def rule_based_check(sql: str) -> dict:
         return {"verdict": "FAIL", "reason": "traffic_source_campaign AS prog — wrong program proxy"}
     if re.search(r'industry_name\s+as\s+\w*gap\w*', sql_lower):
         return {"verdict": "FAIL", "reason": "industry_name aliased as gap area — different dimensions"}
+    # Nested aggregate inside STRING_AGG always fails in PostgreSQL
+    if re.search(r'string_agg\s*\(.*?\|\|.*?count\s*\(', sql_lower):
+        return {"verdict": "FAIL", "reason": "Nested aggregate inside STRING_AGG — PostgreSQL forbids this"}
     stripped = sql_lower.strip()
     if re.match(r'select\s+count\s*\(\s*distinct\s+(\w+)', stripped):
         outer_cd_col = re.match(r'select\s+count\s*\(\s*distinct\s+(\w+)', stripped).group(1)
