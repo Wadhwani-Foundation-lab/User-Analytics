@@ -8,17 +8,18 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from typing import Optional
+from typing import Optional  # noqa: F401 — kept for forward-compat
 from fastapi import FastAPI, HTTPException, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
 from models import ChatRequest, ChatResponse, HistoryResponse, HealthResponse, TableData
 from system_prompt import SYSTEM_PROMPT
-from llm_client import ask
+from llm_client import ask, ask_with_cached_sql
 from supabase_runner import execute, test_connection
 from session_store import get_history, append_turn, clear_session
 from chart_formatter import format_chart
 import chat_history_store as chs
+import sql_cache
 
 # ─── App setup ─────────────────────────────────────────────────────────────────
 
@@ -72,9 +73,13 @@ def chat(req: ChatRequest, _: None = Depends(verify_api_key)):
     server_history = get_history(req.session_id)
     history = server_history if server_history else [h.model_dump() for h in req.history]
 
-    # ── 2. Call Claude ──────────────────────────────────────────────────────────
+    # ── 2. Call Claude (or use cached SQL) ──────────────────────────────────────
+    cached_sql = sql_cache.get(req.question)
     try:
-        llm_result = ask(SYSTEM_PROMPT, history, req.question)
+        if cached_sql:
+            llm_result = ask_with_cached_sql(SYSTEM_PROMPT, history, req.question, cached_sql)
+        else:
+            llm_result = ask(SYSTEM_PROMPT, history, req.question)
     except EnvironmentError as e:
         raise HTTPException(status_code=503, detail=str(e))
     except ValueError as e:
@@ -111,6 +116,10 @@ def chat(req: ChatRequest, _: None = Depends(verify_api_key)):
             status_code=500,
             detail=f"Database query failed: {str(e)} | SQL: {sql}",
         )
+
+    # ── 4b. Populate cache on first successful execution ────────────────────────
+    if not cached_sql and sql:
+        sql_cache.set(req.question, sql)
 
     # ── 5. Format response ──────────────────────────────────────────────────────
     chart_config = None
@@ -231,3 +240,31 @@ def get_messages(session_id: str, _: None = Depends(verify_api_key)):
         return chs.get_session_messages(session_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── SQL Cache admin ─────────────────────────────────────────────────────────────
+
+@app.get("/api/cache/stats", tags=["Cache"])
+def cache_stats(_: None = Depends(verify_api_key)):
+    """Return SQL cache hit/miss statistics."""
+    return sql_cache.stats()
+
+
+@app.get("/api/cache/entries", tags=["Cache"])
+def cache_entries(_: None = Depends(verify_api_key)):
+    """List all cached question→SQL entries."""
+    return sql_cache.list_entries()
+
+
+@app.delete("/api/cache", tags=["Cache"])
+def cache_clear(_: None = Depends(verify_api_key)):
+    """Flush the entire SQL cache."""
+    sql_cache.clear()
+    return {"message": "Cache cleared."}
+
+
+@app.delete("/api/cache/entry", tags=["Cache"])
+def cache_invalidate(question: str, _: None = Depends(verify_api_key)):
+    """Remove a specific question from the cache."""
+    removed = sql_cache.invalidate(question)
+    return {"removed": removed, "question": question}

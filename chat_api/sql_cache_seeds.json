@@ -1,0 +1,14 @@
+{
+  "how many unique participants from india attended at least 2 expert sessions in liftoff-propel during january 2026?": {
+    "sql": "SELECT COUNT(*) AS unique_participants\nFROM (\n  SELECT participant_user_id\n  FROM nep_master_live_events_data\n  WHERE LOWER(particpant_country) = 'india'\n    AND sessiontype = 'expertSession'\n    AND program_key = 'liftoff-propel'\n    AND start_date >= '2026-01-01'\n    AND start_date < '2026-02-01'\n    AND participant_status = 'ATTENDED'\n  GROUP BY participant_user_id\n  HAVING COUNT(DISTINCT event_id) >= 2\n) qualifying_participants\nLIMIT 500",
+    "note": "Correct pattern: wrap GROUP BY + HAVING in subquery, then COUNT(*) outer. Seeded because LLM generates COUNT(DISTINCT X) GROUP BY X which returns one row per user instead of total count."
+  },
+  "for each program, calculate ratio of unique event participants to total registered beneficiaries, filtered to external users only.": {
+    "sql": "SELECT\n  e.program_key,\n  COUNT(DISTINCT e.participant_user_id) AS registered_beneficiaries,\n  COUNT(DISTINCT CASE WHEN e.participant_status = 'ATTENDED' THEN e.participant_user_id END) AS event_participants,\n  ROUND(\n    COUNT(DISTINCT CASE WHEN e.participant_status = 'ATTENDED' THEN e.participant_user_id END)::NUMERIC\n    / NULLIF(COUNT(DISTINCT e.participant_user_id), 0) * 100, 2\n  ) AS participation_ratio_pct\nFROM nep_master_live_events_data e\nJOIN nep_master_user_table_sample_data u ON e.participant_user_id = u.user_id\nWHERE u.user_type = 'External Users'\nGROUP BY e.program_key\nORDER BY participation_ratio_pct DESC\nLIMIT 500",
+    "note": "Seeded because LLM uses traffic_source_campaign AS prog as program proxy (wrong). Correct: use program_key from events table. JOIN to user table only for External Users filter. Both numerator (ATTENDED) and denominator (all registered) from events table."
+  },
+  "across liftoff-spark and liftoff-propel, which gap areas have been covered by events but have no mentor with matching industry expertise?": {
+    "sql": "SELECT DISTINCT e.gapkey AS gap_area\nFROM nep_master_live_events_data e\nWHERE LOWER(e.program_key) IN ('liftoff-spark', 'liftoff-propel')\n  AND e.gapkey IS NOT NULL\n  AND e.gapkey NOT IN (\n    SELECT DISTINCT m.industry_name\n    FROM nep_mentor_profiles_sample_data m\n    WHERE LOWER(m.program) IN ('liftoff-spark', 'liftoff-propel')\n      AND m.industry_name IS NOT NULL\n  )\nORDER BY e.gapkey\nLIMIT 500",
+    "note": "Seeded because LLM tries to JOIN gapkey with industry_name (wrong — different dimensions). Correct: use NOT IN subquery to find event gapkeys that have no matching mentor industry_name."
+  }
+}
