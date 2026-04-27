@@ -98,6 +98,55 @@ def _parse_response(raw_text: str) -> dict | None:
         return None
 
 
+def ask_with_cached_sql(system_prompt: str, history: list[dict], question: str, cached_sql: str) -> dict:
+    """
+    Ask Claude to format a response for a question whose SQL is already known.
+    Skips SQL generation — Claude only determines response_type, nl_answer_template,
+    and chart columns.
+
+    Returns a dict in the same shape as ask():
+        sql, response_type, nl_answer_template, chart_label_column, chart_value_column
+    """
+    client = _get_client()
+
+    formatting_prompt = (
+        f"{question}{_JSON_REMINDER}\n\n"
+        f"[NOTE: The SQL for this question is already determined:\n```sql\n{cached_sql}\n```\n"
+        "Use exactly this SQL in your response. Your only task is to set "
+        "response_type, nl_answer_template, chart_label_column, and chart_value_column "
+        "appropriately for the question.]"
+    )
+
+    messages = history + [{"role": "user", "content": formatting_prompt}]
+
+    response = client.messages.create(
+        model=MODEL,
+        max_tokens=MAX_TOKENS,
+        system=system_prompt,
+        messages=messages,
+    )
+    raw_text: str = response.content[0].text
+    parsed = _parse_response(raw_text)
+
+    if parsed is not None:
+        # Always enforce the cached SQL (LLM must not override it)
+        parsed["sql"] = cached_sql
+        parsed["_raw_response"] = raw_text
+        parsed["_from_cache"] = True
+        return parsed
+
+    # Fallback: return minimal dict with cached SQL so execution can still proceed
+    return {
+        "sql": cached_sql,
+        "response_type": "table",
+        "nl_answer_template": "",
+        "chart_label_column": "",
+        "chart_value_column": "",
+        "_from_cache": True,
+        "_fallback": True,
+    }
+
+
 def ask(system_prompt: str, history: list[dict], question: str) -> dict:
     """
     Send a question (with history) to Claude and return parsed JSON response.
