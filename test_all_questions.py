@@ -198,6 +198,12 @@ def rule_based_check(sql: str) -> dict:
     if re.search(r'industry_name\s+as\s+\w*gap\w*', sql_lower):
         return {"verdict": "FAIL", "reason": "industry_name aliased as gap area — different dimensions (Rule 30)"}
 
+    # Check: nested aggregate inside STRING_AGG — always fails in PostgreSQL
+    # e.g. STRING_AGG(DISTINCT col || ': ' || COUNT(DISTINCT other)::TEXT, ', ')
+    # Use || operator as signal — COUNT() inside STRING_AGG always uses || to concat
+    if re.search(r'string_agg\s*\(.*?\|\|.*?count\s*\(', sql_lower):
+        return {"verdict": "FAIL", "reason": "Nested aggregate inside STRING_AGG — PostgreSQL forbids this (aggregate function calls cannot be nested)"}
+
     # Check: COUNT(DISTINCT X) at outer SELECT level + GROUP BY X + HAVING — missing subquery wrapper
     # e.g. SELECT COUNT(DISTINCT participant_user_id) ... GROUP BY participant_user_id HAVING COUNT >= 2
     # This returns one row per group with count=1, not the total count. Must use subquery.

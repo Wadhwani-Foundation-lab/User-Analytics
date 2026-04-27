@@ -10,5 +10,9 @@
   "across liftoff-spark and liftoff-propel, which gap areas have been covered by events but have no mentor with matching industry expertise?": {
     "sql": "SELECT DISTINCT e.gapkey AS gap_area\nFROM nep_master_live_events_data e\nWHERE LOWER(e.program_key) IN ('liftoff-spark', 'liftoff-propel')\n  AND e.gapkey IS NOT NULL\n  AND e.gapkey NOT IN (\n    SELECT DISTINCT m.industry_name\n    FROM nep_mentor_profiles_sample_data m\n    WHERE LOWER(m.program) IN ('liftoff-spark', 'liftoff-propel')\n      AND m.industry_name IS NOT NULL\n  )\nORDER BY e.gapkey\nLIMIT 500",
     "note": "Seeded because LLM tries to JOIN gapkey with industry_name (wrong — different dimensions). Correct: use NOT IN subquery to find event gapkeys that have no matching mentor industry_name."
+  },
+  "which participants attended events across multiple programs, and how many events did they attend in each?": {
+    "sql": "SELECT\n  e.participant_user_id,\n  MAX(e.participant_first_name || ' ' || e.participant_last_name) AS participant_name,\n  MAX(e.participant_email) AS email,\n  COUNT(DISTINCT e.program_key) AS programs_count,\n  COUNT(DISTINCT e.event_id) AS total_events_attended,\n  STRING_AGG(DISTINCT e.program_key, ', ') AS programs_attended\nFROM nep_master_live_events_data e\nWHERE e.participant_status = 'ATTENDED'\nGROUP BY e.participant_user_id\nHAVING COUNT(DISTINCT e.program_key) > 1\nORDER BY total_events_attended DESC\nLIMIT 500",
+    "note": "Seeded because LLM nests COUNT(DISTINCT event_id) inside STRING_AGG which PostgreSQL forbids (aggregate function calls cannot be nested). Correct: use STRING_AGG(DISTINCT program_key) without nested count."
   }
 }
