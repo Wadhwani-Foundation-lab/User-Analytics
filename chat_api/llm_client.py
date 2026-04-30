@@ -147,6 +147,28 @@ def ask_with_cached_sql(system_prompt: str, history: list[dict], question: str, 
     }
 
 
+def explain_empty_results(question: str, sql: str) -> str:
+    """
+    Called when a SQL query returns 0 rows. Returns a plain-text explanation
+    of what was searched and why there may be no matching data.
+    """
+    client = _get_client()
+    prompt = (
+        f"A database query was run to answer this question but returned no results:\n\n"
+        f"Question: {question}\n\n"
+        f"SQL executed:\n```sql\n{sql}\n```\n\n"
+        "In 1-2 sentences, explain what was being searched for and why there might be "
+        "no matching data. Be specific about the filters used. Do not suggest running "
+        "a different query. Respond with plain text only — no JSON, no markdown."
+    )
+    response = client.messages.create(
+        model=MODEL,
+        max_tokens=256,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.content[0].text.strip()
+
+
 def ask(system_prompt: str, history: list[dict], question: str) -> dict:
     """
     Send a question (with history) to Claude and return parsed JSON response.

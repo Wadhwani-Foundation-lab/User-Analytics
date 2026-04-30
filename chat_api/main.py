@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from models import ChatRequest, ChatResponse, HistoryResponse, HealthResponse, TableData
 from system_prompt import SYSTEM_PROMPT
-from llm_client import ask, ask_with_cached_sql
+from llm_client import ask, ask_with_cached_sql, explain_empty_results
 from supabase_runner import execute, test_connection
 from session_store import get_history, append_turn, clear_session
 from chart_formatter import format_chart
@@ -148,7 +148,7 @@ def chat(req: ChatRequest, _: None = Depends(verify_api_key)):
 
     elif response_type == "table" and not rows:
         response_type = "text"
-        answer = "No data found for that query."
+        answer = explain_empty_results(req.question, sql)
 
     elif response_type == "text":
         if rows:
