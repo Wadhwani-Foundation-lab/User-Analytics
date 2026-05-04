@@ -98,6 +98,36 @@ def _parse_response(raw_text: str) -> dict | None:
         return None
 
 
+def interpret_results(question: str, rows: list[dict]) -> str:
+    """
+    Called after SQL executes successfully with rows. Returns a 2-3 sentence
+    natural language interpretation of the actual data — key patterns, top values,
+    anomalies — so the user gets insight alongside the table.
+    """
+    client = _get_client()
+
+    # Summarise the data: send up to 30 rows to stay within token budget
+    sample = rows[:30]
+    rows_text = "\n".join(str(r) for r in sample)
+    total = len(rows)
+    sample_note = f"(showing {len(sample)} of {total} rows)" if total > 30 else f"({total} rows)"
+
+    prompt = (
+        f"The user asked: \"{question}\"\n\n"
+        f"The query returned the following data {sample_note}:\n{rows_text}\n\n"
+        "Write 2-3 sentences interpreting this data. Highlight the key finding, "
+        "top value or pattern, and any notable anomaly. Be specific — mention actual "
+        "values from the data. Do not say 'the table shows' or 'the data shows'. "
+        "Write as if giving a direct insight to an analyst. Plain text only."
+    )
+    response = client.messages.create(
+        model=MODEL,
+        max_tokens=300,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.content[0].text.strip()
+
+
 def ask_with_cached_sql(system_prompt: str, history: list[dict], question: str, cached_sql: str) -> dict:
     """
     Ask Claude to format a response for a question whose SQL is already known.
