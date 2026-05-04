@@ -1,4 +1,4 @@
-export type ResponseType = "text" | "table" | "bar_chart" | "line_chart" | "pie_chart";
+export type ResponseType = "text" | "table" | "bar_chart" | "line_chart" | "pie_chart" | "funnel_chart";
 
 export interface HistoryTurn {
   role: "user" | "assistant";
@@ -6,7 +6,7 @@ export interface HistoryTurn {
 }
 
 export interface ChartConfig {
-  type: "bar" | "line" | "pie";
+  type: "bar" | "line" | "pie" | "funnel";
   labels: string[];
   datasets: Record<string, unknown>[];
   title?: string;

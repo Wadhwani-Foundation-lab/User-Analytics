@@ -126,9 +126,10 @@ def chat(req: ChatRequest, _: None = Depends(verify_api_key)):
     table_data = None
     answer = nl_template
 
-    if response_type in ("bar_chart", "line_chart", "pie_chart"):
+    if response_type in ("bar_chart", "line_chart", "pie_chart", "funnel_chart"):
         if rows and label_col and value_col:
             chart_config = format_chart(rows, response_type, label_col, value_col, nl_template)
+            answer = interpret_results(req.question, rows)
         else:
             response_type = "table"
 

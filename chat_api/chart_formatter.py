@@ -7,6 +7,7 @@ CHART_TYPE_MAP = {
     "bar_chart": "bar",
     "line_chart": "line",
     "pie_chart": "pie",
+    "funnel_chart": "funnel",
 }
 
 # A curated palette — indigo, emerald, amber, red, blue, purple, teal, orange
@@ -36,7 +37,7 @@ def format_chart(
 
     Args:
         rows: list of dicts from supabase_runner.execute()
-        response_type: "bar_chart" | "line_chart" | "pie_chart"
+        response_type: "bar_chart" | "line_chart" | "pie_chart" | "funnel_chart"
         label_col: column name to use for labels (x-axis or pie segments)
         value_col: column name to use for values (y-axis or pie sizes)
         title: human-readable chart title
@@ -65,7 +66,16 @@ def format_chart(
     bg_colors = [PALETTE[i % len(PALETTE)] for i in range(n)]
     border_colors = [BORDER_PALETTE[i % len(BORDER_PALETTE)] for i in range(n)]
 
-    if chart_type == "pie":
+    if chart_type == "funnel":
+        # Funnel: each stage is a bar; colours progress from indigo → red (warm = drop-off)
+        dataset = {
+            "label": value_col.replace("_", " ").title(),
+            "data": values,
+            "backgroundColor": bg_colors,
+            "borderColor": border_colors,
+            "borderWidth": 1,
+        }
+    elif chart_type == "pie":
         dataset = {
             "label": value_col.replace("_", " ").title(),
             "data": values,
