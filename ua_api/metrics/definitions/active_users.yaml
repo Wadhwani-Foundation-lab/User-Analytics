@@ -48,3 +48,4 @@ sql_template: |
   WHERE activity_type = 'message' AND message_query IS NOT NULL{date_filter}{segment_filter}
   GROUP BY {grain_group}
   ORDER BY {grain_order}
+  LIMIT 500

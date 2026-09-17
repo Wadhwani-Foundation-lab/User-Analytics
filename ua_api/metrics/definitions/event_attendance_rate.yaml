@@ -1,8 +1,9 @@
 name: event_attendance_rate
 description: >-
-  Per completed live event: registrations, attended, no-shows and attendance
-  rate %. Optionally filtered by program (liftoff / liftoff-spark /
-  liftoff-propel), session type (expert_session / round_table), and/or a
+  Per live event: registrations, attended, no-shows and attendance rate %.
+  Defaults to events of any status (OPEN or COMPLETED); optionally filtered
+  by program (liftoff / liftoff-spark / liftoff-propel), session type
+  (expert_session / round_table), event status (completed-only), and/or a
   date range. Use for "attendance rate for Round Table sessions in Liftoff-Propel",
   "no-show rate for Expert Sessions", "how well attended were events in January".
 aliases:
@@ -48,6 +49,13 @@ choices:
         session_type_filter: " AND sessiontype = 'expertSession'"
       round_table:
         session_type_filter: " AND sessiontype = 'roundTable'"
+  event_status:
+    default: all
+    map:
+      all:
+        event_status_filter: ""
+      completed:
+        event_status_filter: " AND event_status = 'COMPLETED'"
 
 sql_template: |
   SELECT
@@ -65,7 +73,7 @@ sql_template: |
       / NULLIF(COUNT(*), 0) * 100, 2
     ) AS attendance_rate_pct
   FROM nep_master_live_events_data
-  WHERE event_status = 'COMPLETED'{date_filter}{program_filter}{session_type_filter}
+  WHERE 1=1{event_status_filter}{date_filter}{program_filter}{session_type_filter}
   GROUP BY event_id
   ORDER BY attendance_rate_pct DESC
   LIMIT 500

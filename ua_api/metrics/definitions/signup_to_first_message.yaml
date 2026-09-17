@@ -31,6 +31,7 @@ sql_template: |
     WHERE activity_type = 'message'
       AND message_query IS NOT NULL
       AND message_date IS NOT NULL
+      AND message_date > signup_date
     GROUP BY userid
   ) fm ON a.userid = fm.userid
   WHERE a.activity_type = 'signup'

@@ -1,10 +1,11 @@
 name: mentors_by_industry_and_program
 description: >-
-  Active mentor count broken down by BOTH program AND industry — shows all
-  programs side-by-side so you can compare industry coverage across Liftoff,
-  Liftoff-Spark, and Liftoff-Propel in one table. Always uses
-  COUNT(DISTINCT user_id). Use for "compare industry coverage across programs",
-  "mentor industry breakdown by program", "which industries are covered in
+  Mentor count broken down by BOTH program AND industry — shows all programs
+  side-by-side so you can compare industry coverage across Liftoff,
+  Liftoff-Spark, and Liftoff-Propel in one table. Defaults to mentors of any
+  status; optionally filtered to ACTIVE-only. Always uses COUNT(DISTINCT
+  user_id). Use for "compare industry coverage across programs", "mentor
+  industry breakdown by program", "which industries are covered in
   Liftoff-Spark vs Liftoff-Propel".
 aliases:
   - "mentor industry coverage by program"
@@ -23,16 +24,24 @@ returns:
   label: program
   value: active_mentors
 
+choices:
+  user_status:
+    default: all
+    map:
+      all:
+        user_status_filter: ""
+      active:
+        user_status_filter: " AND user_status = 'ACTIVE'"
+
 sql_template: |
   SELECT
     program,
     industry_name,
     COUNT(DISTINCT user_id) AS active_mentors
   FROM nep_mentor_profiles_sample_data
-  WHERE user_status = 'ACTIVE'
-    AND deleted = false
+  WHERE deleted = false
     AND program IN ('liftoff', 'liftoff-spark', 'liftoff-propel')
-    AND industry_name IS NOT NULL
+    AND industry_name IS NOT NULL{user_status_filter}
   GROUP BY program, industry_name
   ORDER BY program, active_mentors DESC
   LIMIT 500

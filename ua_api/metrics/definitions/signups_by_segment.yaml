@@ -27,7 +27,7 @@ returns:
   value: signups
 
 date_filter:
-  column: signup_date
+  column: created_datetime
 
 choices:
   dimension:
@@ -40,14 +40,16 @@ choices:
       revenue_range:
         dim_col: "company_revenue_range"
       traffic_source:
+        dim_col: "traffic_source_source"
+      traffic_medium:
         dim_col: "traffic_source_medium"
 
 sql_template: |
   SELECT
     {dim_col} AS segment,
-    COUNT(DISTINCT userid) AS signups
-  FROM nep_liftoffx_data_sample
-  WHERE activity_type = 'signup'{date_filter}
+    COUNT(*) AS signups
+  FROM nep_master_user_table_sample_data
+  WHERE 1=1{date_filter}
   GROUP BY {dim_col}
   ORDER BY signups DESC
   LIMIT 500

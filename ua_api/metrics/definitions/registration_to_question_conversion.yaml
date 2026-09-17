@@ -32,3 +32,4 @@ sql_template: |
     FROM nep_liftoffx_data_sample
     WHERE activity_type = 'message' AND message_query IS NOT NULL
   ) q ON r.user_id = q.userid
+  LIMIT 500

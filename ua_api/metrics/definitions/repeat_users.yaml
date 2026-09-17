@@ -26,3 +26,4 @@ sql_template: |
     WHERE activity_type = 'message' AND message_query IS NOT NULL
     GROUP BY userid
   ) t
+  LIMIT 500

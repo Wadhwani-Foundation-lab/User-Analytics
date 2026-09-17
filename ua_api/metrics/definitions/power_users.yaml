@@ -30,3 +30,4 @@ sql_template: |
   ) t
   GROUP BY user_segment
   ORDER BY MIN(questions_asked)
+  LIMIT 500

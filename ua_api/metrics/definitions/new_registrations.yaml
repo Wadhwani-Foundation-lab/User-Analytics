@@ -18,3 +18,4 @@ sql_template: |
   SELECT COUNT(*) AS registered_users
   FROM nep_master_user_table_sample_data
   WHERE 1=1{date_filter}
+  LIMIT 500

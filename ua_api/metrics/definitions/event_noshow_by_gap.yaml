@@ -1,8 +1,9 @@
 name: event_noshow_by_gap
 description: >-
-  No-show rates for completed events broken down by gap area (topic/domain).
+  No-show rates for events of any status broken down by gap area (topic/domain).
   Identifies which topic areas have the highest no-show rates, signalling
-  scheduling or content improvements needed.
+  scheduling or content improvements needed. Optionally filtered to completed-only
+  events.
 aliases:
   - "no show rate"
   - "event no shows"
@@ -19,6 +20,15 @@ returns:
   label: gap_area
   value: no_show_rate_pct
 
+choices:
+  event_status:
+    default: all
+    map:
+      all:
+        event_status_filter: ""
+      completed:
+        event_status_filter: " AND event_status = 'COMPLETED'"
+
 sql_template: |
   SELECT
     gapkey AS gap_area,
@@ -31,7 +41,7 @@ sql_template: |
       / NULLIF(COUNT(*), 0) * 100, 2
     ) AS no_show_rate_pct
   FROM nep_master_live_events_data
-  WHERE event_status = 'COMPLETED' AND gapkey IS NOT NULL
+  WHERE gapkey IS NOT NULL{event_status_filter}
   GROUP BY gapkey
   ORDER BY no_show_rate_pct DESC
   LIMIT 500

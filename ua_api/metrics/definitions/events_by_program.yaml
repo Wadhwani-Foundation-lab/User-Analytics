@@ -1,10 +1,12 @@
 name: events_by_program
 description: >-
-  Completed events and attendance broken down by program (liftoff, liftoff-propel,
-  liftoff-spark) and session type (roundTable, expertSession). Optionally filtered
-  to a date range. Use for "compare Expert Sessions vs Round Tables across programs",
-  "how many events per program", "attendance by session type in Q1 2026",
-  "month-over-month attendance trends by program and session type".
+  Events and attendance broken down by program (liftoff, liftoff-propel,
+  liftoff-spark) and session type (roundTable, expertSession). Defaults to
+  events of any status (OPEN or COMPLETED); optionally filtered to
+  completed-only events and/or a date range. Use for "compare Expert Sessions
+  vs Round Tables across programs", "how many events per program", "attendance
+  by session type in Q1 2026", "month-over-month attendance trends by program
+  and session type".
 aliases:
   - "events by program"
   - "program attendance"
@@ -42,6 +44,13 @@ choices:
         month_col: "TO_CHAR(start_date, 'YYYY-MM') AS month,\n    "
         month_group: "TO_CHAR(start_date, 'YYYY-MM'), "
         month_order: "TO_CHAR(start_date, 'YYYY-MM'), "
+  event_status:
+    default: all
+    map:
+      all:
+        event_status_filter: ""
+      completed:
+        event_status_filter: " AND event_status = 'COMPLETED'"
 
 sql_template: |
   SELECT
@@ -55,7 +64,7 @@ sql_template: |
       / NULLIF(COUNT(*), 0) * 100, 2
     ) AS attendance_rate_pct
   FROM nep_master_live_events_data
-  WHERE event_status = 'COMPLETED'{date_filter}
+  WHERE 1=1{event_status_filter}{date_filter}
   GROUP BY {month_group}program_key, sessiontype
   ORDER BY {month_order}program_key, total_attended DESC
   LIMIT 500
