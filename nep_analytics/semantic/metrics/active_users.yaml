@@ -1,0 +1,51 @@
+name: active_users
+description: >-
+  Distinct users who asked at least one AI question, counted per period
+  (day / week / month). Covers DAU, WAU, MAU and active-user trends.
+aliases: ["MAU", "WAU", "DAU", "monthly active users", "weekly active users",
+          "daily active users", "active users", "how many users asked questions",
+          "users who asked at least one question", "stickiness"]
+owner: analytics-team
+certified: true
+source: questions_to_sql.md#Q1,Q3
+returns:
+  response_type: line_chart
+  label: period
+  value: active_users
+
+# Optional date-range filter is applied to this column by the backend.
+date_filter:
+  column: message_date
+
+# Optional categorical breakdown, validated against the data_context catalog.
+segment:
+  column: user_type
+  table: nep_liftoffx_data_sample
+
+# Discrete parameter that drives grouping. Each value maps to the SQL fragments
+# substituted into the template. month is the default.
+choices:
+  grain:
+    default: month
+    map:
+      month:
+        grain_select: "month_year AS period, month_year_order,"
+        grain_group: "month_year, month_year_order"
+        grain_order: "month_year_order"
+      week:
+        grain_select: "week_range AS period, month_year_order,"
+        grain_group: "week_range, month_year_order"
+        grain_order: "month_year_order"
+      day:
+        grain_select: "message_date AS period,"
+        grain_group: "message_date"
+        grain_order: "message_date"
+
+sql_template: |
+  SELECT {grain_select}
+         COUNT(DISTINCT userid) AS active_users
+  FROM nep_liftoffx_data_sample
+  WHERE activity_type = 'message' AND message_query IS NOT NULL{date_filter}{segment_filter}
+  GROUP BY {grain_group}
+  ORDER BY {grain_order}
+  LIMIT 500

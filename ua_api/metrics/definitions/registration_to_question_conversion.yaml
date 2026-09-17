@@ -1,0 +1,34 @@
+name: registration_to_question_conversion
+description: >-
+  Of users who registered (optionally in a date range), what share asked at
+  least one AI question. Returns total registered, converted, and conversion %.
+aliases: ["conversion rate", "registration to question conversion",
+          "registration to first question", "how many registered users asked",
+          "activation rate", "signup to question rate"]
+owner: analytics-team
+certified: true
+source: questions_to_sql.md#Q7
+returns:
+  response_type: table
+  value: conversion_rate_pct
+
+# Date range applies to the registration cohort.
+date_filter:
+  column: created_datetime
+
+# Subquery form (no CTE) per project convention.
+sql_template: |
+  SELECT
+    COUNT(r.user_id) AS total_registered,
+    COUNT(q.userid)  AS converted,
+    ROUND(COUNT(q.userid)::NUMERIC / NULLIF(COUNT(r.user_id), 0) * 100, 2) AS conversion_rate_pct
+  FROM (
+    SELECT user_id
+    FROM nep_master_user_table_sample_data
+    WHERE 1=1{date_filter}
+  ) r
+  LEFT JOIN (
+    SELECT DISTINCT userid
+    FROM nep_liftoffx_data_sample
+    WHERE activity_type = 'message' AND message_query IS NOT NULL
+  ) q ON r.user_id = q.userid

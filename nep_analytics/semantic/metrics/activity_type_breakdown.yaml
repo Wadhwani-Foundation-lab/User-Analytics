@@ -1,0 +1,28 @@
+name: activity_type_breakdown
+description: >-
+  Breakdown of all platform activity by activity_type — event counts, unique
+  users and each type's share of total. Optionally limited to a date range.
+aliases: ["activity breakdown", "activity types", "breakdown of activity",
+          "how do users spend time", "activity type distribution",
+          "what activities happen on the platform"]
+owner: analytics-team
+certified: true
+source: questions_to_sql.md#Q27
+returns:
+  response_type: bar_chart
+  label: activity_type
+  value: total_events
+
+date_filter:
+  column: created_at
+
+sql_template: |
+  SELECT
+    activity_type,
+    COUNT(*) AS total_events,
+    COUNT(DISTINCT userid) AS unique_users,
+    ROUND(COUNT(*)::NUMERIC / NULLIF(SUM(COUNT(*)) OVER (), 0) * 100, 2) AS share_pct
+  FROM nep_liftoffx_data_sample
+  WHERE 1=1{date_filter}
+  GROUP BY activity_type
+  ORDER BY total_events DESC

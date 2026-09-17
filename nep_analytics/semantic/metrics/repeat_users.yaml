@@ -1,0 +1,29 @@
+name: repeat_users
+description: >-
+  Retention proxy: how many AI users were active in 2+ distinct calendar months,
+  with the repeat rate. Use for "repeat users", "multi-month retention".
+aliases: ["repeat users", "retention", "returning users", "multi-month users",
+          "how many repeat users", "repeat rate", "stickiness over months"]
+owner: analytics-team
+certified: true
+source: questions_to_sql.md#Q14
+returns:
+  response_type: table
+  value: repeat_rate_pct
+
+# Subquery form (no CTE).
+sql_template: |
+  SELECT
+    SUM(CASE WHEN months_active >= 2 THEN 1 ELSE 0 END) AS repeat_users,
+    COUNT(*) AS total_users,
+    ROUND(
+      SUM(CASE WHEN months_active >= 2 THEN 1 ELSE 0 END)::NUMERIC
+      / NULLIF(COUNT(*), 0) * 100, 2
+    ) AS repeat_rate_pct
+  FROM (
+    SELECT userid, COUNT(DISTINCT month_year_order) AS months_active
+    FROM nep_liftoffx_data_sample
+    WHERE activity_type = 'message' AND message_query IS NOT NULL
+    GROUP BY userid
+  ) t
+  LIMIT 500

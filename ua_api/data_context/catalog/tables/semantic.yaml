@@ -1,0 +1,84 @@
+# semantic.yaml — cross-table semantic constraints for NEP Analytics
+#
+# This file is loaded by load_catalog() AFTER the per-table YAMLs.
+# It encodes three types of facts that span tables and cannot live
+# on a single Column object:
+#
+#   incompatible_pairs  — domain-disjoint columns that must never be joined/compared
+#   canonical_metrics   — blessed rate/ratio formulae; always use these forms
+#   negative_facts      — things that do NOT exist in the data
+#
+# All negative_facts marked verified=true have been confirmed by running
+#   python -m ua_api.data_context catalog verify-rules
+# against the live Supabase DB.
+
+# ── Disjoint taxonomies — never join or compare these column pairs ─────────
+
+incompatible_pairs:
+  - left: nep_master_live_events_data.gapkey
+    right: nep_mentor_profiles_sample_data.industry_name
+    reason: >
+      gapkey holds strategic skill/topic areas (e.g. PitchMastery, GrowthHacking).
+      industry_name holds industry sectors (e.g. FinTech, EdTech, Mobility).
+      The value sets are completely disjoint (verified live). A JOIN or IN-subquery
+      comparing them will almost always return empty or misleading results.
+      To find mentors relevant to an event topic, use a human-curated mapping or
+      surface both dimensions side-by-side — do not equate them.
+
+# ── Canonical rate/ratio formulae ─────────────────────────────────────────
+
+canonical_metrics:
+  - name: no_show_rate
+    formula: >
+      COUNT(*) FILTER (WHERE participant_status = 'NOSHOW')::NUMERIC /
+      NULLIF(COUNT(*), 0)
+    description: >
+      No-show rate = NOSHOW rows / all participant rows for the event.
+      participant_status is mutually exclusive (ATTENDED | NOSHOW | REGISTERED),
+      so COUNT(*) is the correct total denominator.
+      NEVER divide by only REGISTERED-status rows — that excludes attended/noshow
+      rows and produces rates > 100%.
+
+  - name: attendance_rate
+    formula: >
+      COUNT(*) FILTER (WHERE participant_status = 'ATTENDED')::NUMERIC /
+      NULLIF(COUNT(*), 0)
+    description: >
+      Attendance rate = ATTENDED rows / all participant rows for the event.
+      Same denominator rule as no_show_rate.
+
+  - name: funnel_stage_conversion
+    formula: >
+      COUNT(DISTINCT user_id_at_stage_N) / NULLIF(COUNT(DISTINCT user_id_at_stage_1), 0)
+    description: >
+      Funnel conversion: stage N must be restricted to the cohort that completed
+      stage N-1 (nested subquery or CTE per-stage filter).
+      A non-sequential funnel where each stage is counted independently from the
+      full population will produce impossible conversions (> 100%).
+
+# ── Negative facts — things that do NOT exist in the data ──────────────────
+
+negative_facts:
+  - fact: >
+      activity_type = 'onboarding_completed' does not exist.
+      Only these 9 values exist: message, mentor, session, resource, visitors,
+      repeat visitors, signup, jounrney_explore, introductory_video_reg_users.
+      There are onboarding click events (e.g. onboarding_next_clicked) but no
+      dedicated completion event — do not use them as a proxy for full completion.
+    verified: true
+
+  - fact: >
+      The mentor profiles table (nep_mentor_profiles_sample_data) has NO engagement
+      or activity-date columns. It has profile lifecycle dates (created_at, updated_at,
+      edu_start_date, graduation_date, emp_start_date, emp_end_date) but nothing
+      recording when a mentor was last active on the platform.
+      "Mentors active in month X" cannot be derived from this table using an
+      activity date; only "mentors whose profile existed by date X" is derivable
+      via created_at.
+    verified: true
+
+  - fact: >
+      speaker_name values in nep_master_live_events_data contain inconsistent
+      whitespace (e.g. 'Neetu  bansal' with a double space). Exact string matches
+      may miss rows. Use LOWER(TRIM(speaker_name)) or ILIKE for speaker name filters.
+    verified: false

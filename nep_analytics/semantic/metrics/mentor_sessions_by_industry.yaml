@@ -1,0 +1,30 @@
+name: mentor_sessions_by_industry
+description: >-
+  Mentor sessions booked broken down by mentor industry. Shows which industry
+  sectors see the most user demand for mentorship.
+aliases:
+  - "mentor sessions by industry"
+  - "which industry gets most mentor bookings"
+  - "mentor booking by industry"
+  - "session demand by industry"
+  - "most booked mentor industries"
+owner: analytics-team
+certified: true
+source: questions_to_sql.md#Q23
+returns:
+  response_type: bar_chart
+  label: industry_name
+  value: total_sessions
+
+sql_template: |
+  SELECT
+    m.industry_name,
+    COUNT(DISTINCT a.userid) AS users_who_booked,
+    COUNT(*) AS total_sessions
+  FROM nep_liftoffx_data_sample a
+  JOIN nep_mentor_profiles_sample_data m
+    ON a.mentor_id::VARCHAR = m.user_id
+  WHERE a.activity_type = 'mentor'
+  GROUP BY m.industry_name
+  ORDER BY total_sessions DESC
+  LIMIT 500

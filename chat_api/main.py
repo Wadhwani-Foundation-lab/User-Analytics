@@ -58,7 +58,7 @@ def health(_: None = Depends(verify_api_key)):
     return HealthResponse(
         status="ok" if connected else "degraded",
         supabase_connected=connected,
-        llm_model="claude-sonnet-4-5",
+        llm_model="claude-sonnet-5",
     )
 
 

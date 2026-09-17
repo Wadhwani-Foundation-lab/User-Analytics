@@ -135,7 +135,7 @@ npm run dev                         # → http://localhost:3000
 
 ## Important Conventions
 
-1. **No CTEs** — Use subqueries instead of `WITH ... AS` (Supabase RPC limitation)
+1. **CTEs allowed** — `WITH ... AS` is supported by the Supabase `execute_sql` RPC (empirically verified); subqueries work too. Put `LIMIT 500` in the final SELECT when using a CTE.
 2. **JOIN keys differ** — `user_id` in users table, `userid` (no underscore) in activity table
 3. **LIMIT 500** — Always applied to SQL queries
 4. **LLM responses are always JSON** — Even clarification/follow-up answers wrap in JSON

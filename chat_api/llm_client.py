@@ -1,5 +1,5 @@
 """
-Anthropic Claude claude-sonnet-4-5 LLM client.
+Anthropic Claude claude-sonnet-5 LLM client.
 Parses the model's structured JSON response and returns it as a dict.
 
 Robustness improvements:
@@ -14,7 +14,7 @@ import re
 
 import anthropic
 
-MODEL = "claude-sonnet-4-5"
+MODEL = "claude-sonnet-5"
 MAX_TOKENS = 4096
 
 # Appended to every user message to re-anchor Claude to JSON output.
@@ -46,6 +46,14 @@ def _get_client() -> anthropic.Anthropic:  # type: ignore[return]
             raise EnvironmentError("ANTHROPIC_API_KEY environment variable is not set.")
         _client = anthropic.Anthropic(api_key=api_key)
     return _client
+
+
+def _response_text(response) -> str:
+    """Return the first text block's content, skipping thinking blocks."""
+    for block in response.content:
+        if block.type == "text":
+            return block.text
+    return ""
 
 
 def _extract_json_object(text: str) -> str | None:
@@ -155,7 +163,7 @@ def ask_with_cached_sql(system_prompt: str, history: list[dict], question: str, 
         system=system_prompt,
         messages=messages,
     )
-    raw_text: str = response.content[0].text
+    raw_text: str = _response_text(response)
     parsed = _parse_response(raw_text)
 
     if parsed is not None:
@@ -196,7 +204,7 @@ def explain_empty_results(question: str, sql: str) -> str:
         max_tokens=256,
         messages=[{"role": "user", "content": prompt}],
     )
-    return response.content[0].text.strip()
+    return _response_text(response).strip()
 
 
 def ask(system_prompt: str, history: list[dict], question: str) -> dict:
@@ -224,7 +232,7 @@ def ask(system_prompt: str, history: list[dict], question: str) -> dict:
         system=system_prompt,
         messages=messages,
     )
-    raw_text: str = response.content[0].text
+    raw_text: str = _response_text(response)
     parsed = _parse_response(raw_text)
 
     if parsed is not None:
@@ -246,7 +254,7 @@ def ask(system_prompt: str, history: list[dict], question: str) -> dict:
         system=system_prompt,
         messages=correction_messages,
     )
-    retry_text: str = retry_response.content[0].text
+    retry_text: str = _response_text(retry_response)
     parsed_retry = _parse_response(retry_text)
 
     if parsed_retry is not None:

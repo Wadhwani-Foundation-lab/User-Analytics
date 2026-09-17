@@ -1,0 +1,37 @@
+name: event_noshow_by_gap
+description: >-
+  No-show rates for completed events broken down by gap area (topic/domain).
+  Identifies which topic areas have the highest no-show rates, signalling
+  scheduling or content improvements needed.
+aliases:
+  - "no show rate"
+  - "event no shows"
+  - "noshow by topic"
+  - "gap area no show"
+  - "which topics have high no shows"
+  - "event no-show rate by topic"
+  - "dropout rate by gap area"
+owner: analytics-team
+certified: true
+source: questions_to_sql.md#Q26
+returns:
+  response_type: bar_chart
+  label: gap_area
+  value: no_show_rate_pct
+
+sql_template: |
+  SELECT
+    gapkey AS gap_area,
+    COUNT(DISTINCT event_id) AS events,
+    COUNT(*) AS total_registrations,
+    SUM(CASE WHEN participant_status = 'NOSHOW' THEN 1 ELSE 0 END) AS no_shows,
+    SUM(CASE WHEN participant_status = 'ATTENDED' THEN 1 ELSE 0 END) AS attended,
+    ROUND(
+      SUM(CASE WHEN participant_status = 'NOSHOW' THEN 1 ELSE 0 END)::NUMERIC
+      / NULLIF(COUNT(*), 0) * 100, 2
+    ) AS no_show_rate_pct
+  FROM nep_master_live_events_data
+  WHERE event_status = 'COMPLETED' AND gapkey IS NOT NULL
+  GROUP BY gapkey
+  ORDER BY no_show_rate_pct DESC
+  LIMIT 500

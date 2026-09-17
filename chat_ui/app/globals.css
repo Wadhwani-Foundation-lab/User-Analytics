@@ -564,6 +564,47 @@ body {
   border-top: 1px solid var(--border-subtle);
 }
 
+/* ── Provenance Badge ──────────────────────────────────────────── */
+.provenance-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.22);
+  border-radius: 20px;
+  font-size: 11px;
+  color: #6ee7b7;
+  max-width: fit-content;
+}
+
+.provenance-icon {
+  font-size: 10px;
+  color: #10b981;
+  font-weight: 700;
+}
+
+.provenance-label {
+  font-weight: 600;
+  color: #6ee7b7;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 10px;
+}
+
+.provenance-sep {
+  color: rgba(110, 231, 183, 0.35);
+}
+
+.provenance-metric {
+  color: #a7f3d0;
+  font-weight: 500;
+}
+
+.provenance-confidence {
+  color: rgba(167, 243, 208, 0.7);
+}
+
 /* ── SQL Block ─────────────────────────────────────────────────── */
 .sql-block {
   max-width: 680px;

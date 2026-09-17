@@ -1,0 +1,303 @@
+name: nep_liftoffx_data_sample
+description: >-
+  Central activity fact table. One row per user activity event; a single user
+  can have many rows. Used for engagement, retention, funnel and feature-usage
+  analysis. user/company/traffic columns are denormalised copies from the user
+  table for query convenience.
+grain: >-
+  One row per activity-event slice. activity_id is NOT unique
+  (~71,388 distinct ids across ~154,904 rows; an event is spread across
+  multiple GA/sub-event rows), so there is no single-column primary key.
+owner: analytics-team
+source_csv: csvfiles/nep_liftoffX_data_sample.csv
+# activity_id is duplicated in the data — not a valid primary key. See grain.
+primary_key: null
+
+joins:
+  - column: userid
+    references_table: nep_master_user_table_sample_data
+    references_column: user_id
+    description: The acting user. NOTE the FK column is `userid` with NO underscore.
+  - column: mentor_id
+    references_table: nep_mentor_profiles_sample_data
+    references_column: user_id
+    description: Mentor involved in the activity (mentor-type rows only).
+
+columns:
+  - name: last_active
+    logical_type: integer
+    db_type: BIGINT
+    description: Ordinal rank of the user's most recent active day.
+  - name: week_activity_number
+    logical_type: integer
+    db_type: BIGINT
+    description: Week number relative to signup week.
+  - name: month_activity_number
+    logical_type: integer
+    db_type: BIGINT
+    description: Month number relative to signup month.
+  - name: signup_year_monthnumber_weekstart_order
+    logical_type: integer
+    db_type: BIGINT
+    description: Numeric sort key for signup week.
+  - name: year_monthnumber_weekstart_order
+    logical_type: integer
+    db_type: BIGINT
+    description: Numeric sort key for activity week.
+  - name: signup_date
+    logical_type: date_string
+    db_type: DATE
+    description: Date the user signed up.
+    date_format: '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+    sample_values: ["2026-02-17", "2025-10-03"]
+  - name: signup_month_name
+    logical_type: text
+    db_type: TEXT
+    description: Short month name of signup month.
+    sample_values: ["Feb", "Oct"]
+  - name: signup_month_number
+    logical_type: text
+    db_type: TEXT
+    description: Numeric month of signup (as text).
+  - name: user_type_datekey
+    logical_type: text
+    db_type: TEXT
+    description: Composite key for cohort grouping.
+  - name: userid
+    logical_type: id
+    db_type: TEXT
+    description: Foreign key to user_id in the user table. NO underscore.
+    nullable: false
+    is_key: true
+  - name: user_email
+    logical_type: text
+    db_type: TEXT
+    description: Email of the user (denormalised).
+  - name: user_first_name
+    logical_type: text
+    db_type: TEXT
+    description: User's first name (denormalised).
+  - name: user_last_name
+    logical_type: text
+    db_type: TEXT
+    description: User's last name (denormalised).
+  - name: company_type
+    logical_type: enum
+    db_type: TEXT
+    description: User's company type (denormalised copy — query nep_master_user_table_sample_data.company_type for completeness; this copy misses users who have no activity rows).
+    enum_values: ["startup", "msme"]
+    authority: false
+    authoritative_source: nep_master_user_table_sample_data.company_type
+  - name: company_revenue_range
+    logical_type: enum
+    db_type: TEXT
+    description: User's company revenue range (denormalised copy — query nep_master_user_table_sample_data.company_revenue_range for completeness; this copy misses users who have no activity rows).
+    enum_values: ["above-5-crore", "pre-revenue", "1-5-crore"]
+    authority: false
+    authoritative_source: nep_master_user_table_sample_data.company_revenue_range
+  - name: created_at
+    logical_type: date_string
+    db_type: DATE
+    description: Date this activity record was created. (This table has NO created_datetime.)
+    date_format: '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+  - name: activity_id
+    logical_type: id
+    db_type: TEXT
+    description: Unique identifier for this activity event.
+    nullable: false
+    is_key: true
+  - name: activity_type
+    logical_type: enum
+    db_type: TEXT
+    description: >-
+      Broad category of activity. Use ONLY these exact strings. Note the
+      intentional typo 'jounrney_explore'. NEVER use ai_chat / mentor_session /
+      live_event / resource_view.
+    enum_values:
+      ["message", "mentor", "session", "resource", "visitors",
+       "repeat visitors", "signup", "jounrney_explore",
+       "introductory_video_reg_users"]
+  - name: activity_tittle
+    logical_type: text
+    db_type: TEXT
+    description: Specific name of the activity. NOTE intentional typo (double 't').
+    sample_values: ["homepage_landed", "page_view"]
+  - name: conversation_id
+    logical_type: id
+    db_type: TEXT
+    description: AI chat conversation ID (message activity only).
+  - name: conversation_parent_id
+    logical_type: id
+    db_type: TEXT
+    description: Parent conversation ID for threaded chat.
+  - name: message_query
+    logical_type: text
+    db_type: TEXT
+    description: User's question sent to the AI assistant.
+  - name: message_query_id
+    logical_type: id
+    db_type: TEXT
+    description: Unique ID for the message query.
+  - name: message_rating
+    logical_type: text
+    db_type: TEXT
+    description: User rating of the AI response. Feedback-loop signal.
+  - name: message_rating_feedback
+    logical_type: text
+    db_type: TEXT
+    description: Free-text feedback on the AI response. Feedback-loop signal.
+  - name: response_type
+    logical_type: enum
+    db_type: TEXT
+    description: Type of AI response generated. Vocabulary confirmed against live data.
+    enum_values: ["answer", "clarification", "regular", "journey", "new_conversation"]
+  - name: response_content
+    logical_type: text
+    db_type: TEXT
+    description: Full text of the AI response.
+  - name: response_timestamp
+    logical_type: timestamp
+    db_type: TEXT
+    description: Timestamp of the AI response (ISO 8601 UTC).
+    date_format: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T'
+  - name: response_flow_state
+    logical_type: enum
+    db_type: TEXT
+    description: Final state of the AI response pipeline. Vocabulary confirmed against live data.
+    enum_values: ["completed", "journey_generated"]
+  - name: response_metricsblob
+    logical_type: json
+    db_type: TEXT
+    description: JSON blob with AI processing metrics.
+  - name: message_date
+    logical_type: date_string
+    db_type: DATE
+    description: Date of the AI chat message.
+    date_format: '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+  - name: session_rating
+    logical_type: text
+    db_type: TEXT
+    description: Rating for a mentor session.
+  - name: mentor_rating
+    logical_type: text
+    db_type: TEXT
+    description: Rating for the mentor.
+  - name: resources_rating
+    logical_type: text
+    db_type: TEXT
+    description: Rating for resources.
+  - name: mentor_id
+    logical_type: id
+    db_type: TEXT
+    description: ID of the mentor. Joins to user_id in the mentor table.
+  - name: mentor_name
+    logical_type: text
+    db_type: TEXT
+    description: Name of the mentor.
+  - name: mentor_email
+    logical_type: text
+    db_type: TEXT
+    description: Email of the mentor.
+  - name: connection_reason
+    logical_type: text
+    db_type: TEXT
+    description: Reason for mentor connection.
+  - name: event_id
+    logical_type: id
+    db_type: TEXT
+    description: ID of live event attended.
+  - name: event_date
+    logical_type: text
+    db_type: TEXT
+    description: Date of the live event (free text in this table).
+  - name: event_time
+    logical_type: text
+    db_type: TEXT
+    description: Time of the live event.
+  - name: event_source
+    logical_type: text
+    db_type: TEXT
+    description: Source from which the user accessed the event.
+  - name: event_speaker
+    logical_type: text
+    db_type: TEXT
+    description: Speaker at the event.
+  - name: event_gap_area
+    logical_type: text
+    db_type: TEXT
+    description: Gap area covered by the event.
+  - name: expert_session_topic
+    logical_type: text
+    db_type: TEXT
+    description: Topic of the expert session.
+  - name: ga_session_id
+    logical_type: id
+    db_type: TEXT
+    description: Google Analytics 4 session ID.
+  - name: ga_event_name
+    logical_type: text
+    db_type: TEXT
+    description: GA4 event name (large open vocabulary; not enum-validated).
+    sample_values: ["homepage_landed", "page_view", "chat_rating_submitted"]
+  - name: ga_event_date
+    logical_type: date_string
+    db_type: DATE
+    description: Date of the GA4 event.
+    date_format: '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+  - name: user_type
+    logical_type: enum
+    db_type: TEXT
+    description: User classification (denormalised).
+    enum_values: ["Internal Users", "External Users", "Incomplete Profile"]
+  - name: traffic_source_source
+    logical_type: text
+    db_type: TEXT
+    description: UTM source (denormalised).
+  - name: traffic_source_medium
+    logical_type: text
+    db_type: TEXT
+    description: UTM medium (denormalised).
+  - name: traffic_source_campaign
+    logical_type: text
+    db_type: TEXT
+    description: UTM campaign name (denormalised).
+  - name: month_year
+    logical_type: text
+    db_type: TEXT
+    description: Human-readable activity month-year label.
+    sample_values: ["Feb 2026", "Oct 2025"]
+  - name: month_year_order
+    logical_type: text
+    db_type: TEXT
+    description: Sort key for month_year (YYYYMM as text).
+    sample_values: ["202602", "202510"]
+  - name: signup_month_year
+    logical_type: text
+    db_type: TEXT
+    description: Human-readable signup month-year label.
+  - name: signup_month_year_order
+    logical_type: text
+    db_type: TEXT
+    description: Sort key for signup_month_year (YYYYMM as text).
+  - name: signup_year
+    logical_type: integer
+    db_type: INTEGER
+    description: Year the user signed up.
+    sample_values: ["2026", "2025"]
+  - name: month_name
+    logical_type: text
+    db_type: TEXT
+    description: Short name of activity month.
+  - name: month_number
+    logical_type: text
+    db_type: TEXT
+    description: Numeric month of activity (as text).
+  - name: week_range
+    logical_type: text
+    db_type: TEXT
+    description: Human-readable date range of activity week.
+    sample_values: ["16 Feb - 22 Feb"]
+  - name: signup_week_range
+    logical_type: text
+    db_type: TEXT
+    description: Date range of signup week.

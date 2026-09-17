@@ -1,0 +1,42 @@
+name: user_type_engagement
+description: >-
+  Side-by-side comparison of how Internal (Wadhwani staff) and External
+  (entrepreneurs) users engage across AI chat, mentor sessions, live events,
+  and resource views.
+aliases:
+  - "internal vs external"
+  - "user type comparison"
+  - "internal external engagement"
+  - "how do internal vs external users differ"
+  - "user type breakdown"
+  - "internal users vs external users"
+owner: analytics-team
+certified: true
+source: questions_to_sql.md#Q29
+returns:
+  response_type: table
+  label: user_type
+  value: ai_chat_rate_pct
+
+sql_template: |
+  SELECT
+    u.user_type,
+    COUNT(DISTINCT u.user_id) AS total_users,
+    COUNT(DISTINCT CASE WHEN a.activity_type = 'message'
+          AND a.message_query IS NOT NULL THEN a.userid END) AS ai_chat_users,
+    COUNT(DISTINCT CASE WHEN a.activity_type = 'mentor'
+          THEN a.userid END) AS mentor_session_users,
+    COUNT(DISTINCT CASE WHEN a.activity_type = 'session'
+          THEN a.userid END) AS live_event_users,
+    COUNT(DISTINCT CASE WHEN a.activity_type = 'resource'
+          THEN a.userid END) AS resource_view_users,
+    ROUND(
+      COUNT(DISTINCT CASE WHEN a.activity_type = 'message'
+            AND a.message_query IS NOT NULL THEN a.userid END)::NUMERIC
+      / NULLIF(COUNT(DISTINCT u.user_id), 0) * 100, 2
+    ) AS ai_chat_rate_pct
+  FROM nep_master_user_table_sample_data u
+  LEFT JOIN nep_liftoffx_data_sample a ON u.user_id = a.userid
+  GROUP BY u.user_type
+  ORDER BY u.user_type
+  LIMIT 500

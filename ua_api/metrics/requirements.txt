@@ -1,0 +1,7 @@
+anthropic>=0.39.0
+PyYAML>=6.0
+python-dotenv>=1.0.0
+supabase>=2.0.0
+# Only for the metrics.api submodule
+fastapi>=0.110.0
+uvicorn>=0.29.0

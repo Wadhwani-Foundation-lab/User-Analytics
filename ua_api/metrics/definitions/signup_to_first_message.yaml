@@ -1,0 +1,40 @@
+name: signup_to_first_message
+description: >-
+  Average days from signup to first AI question, broken down by company revenue
+  range. Shows how quickly different user segments activate on the AI chat feature.
+  Lower is better — indicates faster time to value.
+aliases:
+  - "time to first message"
+  - "days to first question"
+  - "activation time"
+  - "signup to first question"
+  - "how long before first AI message"
+  - "time to activation by revenue"
+  - "time to first AI interaction"
+owner: analytics-team
+certified: true
+source: questions_to_sql.md#Q37,Q46
+returns:
+  response_type: bar_chart
+  label: company_revenue_range
+  value: avg_days_to_first_message
+
+sql_template: |
+  SELECT
+    a.company_revenue_range,
+    COUNT(DISTINCT a.userid) AS users,
+    ROUND(AVG(fm.first_msg - a.signup_date)::NUMERIC, 1) AS avg_days_to_first_message
+  FROM nep_liftoffx_data_sample a
+  JOIN (
+    SELECT userid, MIN(message_date) AS first_msg
+    FROM nep_liftoffx_data_sample
+    WHERE activity_type = 'message'
+      AND message_query IS NOT NULL
+      AND message_date IS NOT NULL
+    GROUP BY userid
+  ) fm ON a.userid = fm.userid
+  WHERE a.activity_type = 'signup'
+    AND a.company_revenue_range IS NOT NULL
+  GROUP BY a.company_revenue_range
+  ORDER BY avg_days_to_first_message
+  LIMIT 500

@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { ChatMessage } from "@/lib/types";
 import TableBlock from "./TableBlock";
 import SqlBlock from "./SqlBlock";
+import ProvenanceBadge from "./ProvenanceBadge";
 
 const ChartBlock = dynamic(() => import("./ChartBlock"), { ssr: false });
 const FunnelChart = dynamic(() => import("./FunnelChart"), { ssr: false });
@@ -41,6 +42,9 @@ function AssistantBubble({ msg }: { msg: ChatMessage }) {
                 <div className="bubble assistant-bubble">
                     <p className="bubble-text">{msg.content}</p>
                 </div>
+                {msg.provenance?.certified && (
+                    <ProvenanceBadge provenance={msg.provenance} />
+                )}
                 {isChart && msg.chart_config && (
                     <div className="chart-wrapper">
                         <ChartBlock config={msg.chart_config} />

@@ -1,0 +1,70 @@
+name: Nightly — LLM Judge Semantic Regression
+
+on:
+  schedule:
+    - cron: "0 2 * * *"   # 02:00 UTC daily (07:30 IST)
+  workflow_dispatch:       # allow manual trigger
+
+jobs:
+  judge-eval:
+    name: LLM-judge semantic eval (Opus)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          pip install -r chat_api/requirements.txt
+          pip install -r ua_api/metrics/requirements.txt
+          pip install httpx openpyxl
+
+      - name: Write .env
+        run: |
+          cat > chat_api/.env <<EOF
+          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY=${{ secrets.SUPABASE_SERVICE_KEY }}
+          ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
+          API_SECRET_KEY=${{ secrets.API_SECRET_KEY }}
+          UPSTREAM_CHAT_URL=http://localhost:8001
+          ALLOWED_ORIGINS=http://localhost:3000
+          EOF
+
+      - name: Start upstream chat_api (port 8001)
+        run: |
+          cd chat_api
+          uvicorn main:app --port 8001 &
+          sleep 8   # wait for startup
+
+      - name: Start chat_adapter (port 8000)
+        run: |
+          uvicorn ua_api.chat_adapter.main:app --port 8000 &
+          sleep 5
+
+      - name: Health check
+        run: |
+          curl -f http://localhost:8001/api/health || (echo "chat_api not healthy" && exit 1)
+
+      - name: Run certified-only eval (fast gate)
+        run: python -m ua_api.validation --mode certified_only
+
+      - name: Run LLM judge eval (semantic_guard cases)
+        run: |
+          python -m ua_api.validation \
+            --mode judge \
+            --base-url http://localhost:8000 \
+            --api-key "${{ secrets.API_SECRET_KEY }}" \
+            --output judge_results.json
+
+      - name: Upload judge results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: judge-results-${{ github.run_number }}
+          path: judge_results.json
+          retention-days: 90

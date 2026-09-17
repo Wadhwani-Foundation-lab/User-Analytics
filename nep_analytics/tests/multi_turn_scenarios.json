@@ -1,0 +1,165 @@
+[
+  {
+    "id": "MT01",
+    "name": "Total signups → company type breakdown → startup share",
+    "turns": [
+      "How many users have signed up in total?",
+      "Break that down by company type",
+      "What percentage of the total are startups?"
+    ]
+  },
+  {
+    "id": "MT02",
+    "name": "Active mentors → program distribution",
+    "turns": [
+      "How many active mentors are there?",
+      "Which program has the most active mentors?"
+    ]
+  },
+  {
+    "id": "MT03",
+    "name": "Completed events → session type split",
+    "turns": [
+      "How many completed events have taken place?",
+      "Split that between expertSession and roundTable types"
+    ]
+  },
+  {
+    "id": "MT04",
+    "name": "Top traffic source → best medium for that source",
+    "turns": [
+      "Which traffic source brought the most signups?",
+      "For that top source, which medium performed best?"
+    ]
+  },
+  {
+    "id": "MT05",
+    "name": "AI chat usage → top user questions",
+    "turns": [
+      "How many users have sent messages to the AI chat?",
+      "What are the most common questions or topics they asked about?"
+    ]
+  },
+  {
+    "id": "MT06",
+    "name": "Gap area session activity → unique attendees",
+    "turns": [
+      "Which gap area had the most mentor session activity?",
+      "How many unique users attended sessions in that gap area?"
+    ]
+  },
+  {
+    "id": "MT07",
+    "name": "Startup user count → revenue range breakdown",
+    "turns": [
+      "How many startup-type users are registered on the platform?",
+      "Break them down by revenue range"
+    ]
+  },
+  {
+    "id": "MT08",
+    "name": "Monthly signup trend 2026 → peak month",
+    "turns": [
+      "Show me monthly signup counts for 2026",
+      "Which month had the highest signups?"
+    ]
+  },
+  {
+    "id": "MT09",
+    "name": "Mentor industry breakdown → India count",
+    "turns": [
+      "Show me mentor counts grouped by industry",
+      "How many of those mentors are based in India?"
+    ]
+  },
+  {
+    "id": "MT10",
+    "name": "Event no-show rate → by session type",
+    "turns": [
+      "What is the overall no-show rate for events?",
+      "Compare no-show rates between expertSession and roundTable"
+    ]
+  },
+  {
+    "id": "MT11",
+    "name": "Recent signups → engaged users",
+    "turns": [
+      "How many users signed up in the last 6 months?",
+      "How many of those users had at least one activity after signing up?"
+    ]
+  },
+  {
+    "id": "MT12",
+    "name": "Pre-revenue users → their top activities",
+    "turns": [
+      "How many users are in the pre-revenue category?",
+      "What activity types do they engage in most?"
+    ]
+  },
+  {
+    "id": "MT13",
+    "name": "Weekly signups Q1 2026 → peak week",
+    "turns": [
+      "Show me weekly signup counts for Q1 2026",
+      "Which week had the highest number of signups?"
+    ]
+  },
+  {
+    "id": "MT14",
+    "name": "Top event speaker → their gap area coverage",
+    "turns": [
+      "Who conducted the most events in 2026?",
+      "What gap areas did that top speaker cover?"
+    ]
+  },
+  {
+    "id": "MT15",
+    "name": "MSME count → revenue distribution → most active segment",
+    "turns": [
+      "How many MSME users are registered?",
+      "What is their revenue range distribution?",
+      "Which MSME revenue segment has the most engagement activity?"
+    ]
+  },
+  {
+    "id": "MT16",
+    "name": "Program user comparison → mentor count per program",
+    "turns": [
+      "Compare total signup counts across the liftoff, liftoff-spark, and liftoff-propel programs",
+      "Which of those programs has the highest number of mentors?"
+    ]
+  },
+  {
+    "id": "MT17",
+    "name": "Journey exploration vs introductory video",
+    "turns": [
+      "How many users explored the journey feature?",
+      "How does that compare to users who watched the introductory video?"
+    ]
+  },
+  {
+    "id": "MT18",
+    "name": "External users → their dominant activity",
+    "turns": [
+      "How many External Users are registered on the platform?",
+      "What is the most common activity type among external users?"
+    ]
+  },
+  {
+    "id": "MT19",
+    "name": "Event ratings 2026 → best rated gap area",
+    "turns": [
+      "What is the average participant rating for events held in 2026?",
+      "Which gap area has the highest average rating?"
+    ]
+  },
+  {
+    "id": "MT20",
+    "name": "Event attendees → speaker mentor types → top mentor type",
+    "turns": [
+      "How many unique users attended at least one event?",
+      "What mentor types were the speakers at those events?",
+      "Which mentor type attracted the most unique attendees?"
+    ]
+  }
+]

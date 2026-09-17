@@ -1,0 +1,55 @@
+name: mentors_by_industry
+description: >-
+  Count of non-deleted mentors per industry. Defaults to mentors of any status
+  (ACTIVE or PENDING); optionally filtered to ACTIVE-only mentors, and/or to a
+  single program (liftoff / liftoff-spark / liftoff-propel). Mentors are counted
+  with COUNT(DISTINCT user_id) because the mentor table is exploded across
+  attributes. For cross-program comparison use mentors_by_industry_and_program
+  instead.
+aliases:
+  - "mentors by industry"
+  - "active mentors per industry"
+  - "how many mentors per industry"
+  - "mentor coverage by industry"
+  - "mentor supply by sector"
+  - "industry breakdown of mentors"
+  - "mentor count by industry"
+owner: analytics-team
+certified: true
+source: questions_to_sql.md#Q21
+returns:
+  response_type: bar_chart
+  label: industry_name
+  value: active_mentors
+
+choices:
+  program:
+    default: all
+    map:
+      all:
+        program_filter: ""
+      liftoff:
+        program_filter: " AND program = 'liftoff'"
+      liftoff-spark:
+        program_filter: " AND program = 'liftoff-spark'"
+      liftoff-propel:
+        program_filter: " AND program = 'liftoff-propel'"
+      ignite:
+        program_filter: " AND program = 'ignite'"
+  user_status:
+    default: all
+    map:
+      all:
+        user_status_filter: ""
+      active:
+        user_status_filter: " AND user_status = 'ACTIVE'"
+
+sql_template: |
+  SELECT
+    industry_name,
+    COUNT(DISTINCT user_id) AS active_mentors
+  FROM nep_mentor_profiles_sample_data
+  WHERE deleted = false{user_status_filter}{program_filter}
+  GROUP BY industry_name
+  ORDER BY active_mentors DESC
+  LIMIT 500

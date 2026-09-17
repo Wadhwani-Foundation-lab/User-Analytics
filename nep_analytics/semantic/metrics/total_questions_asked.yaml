@@ -1,0 +1,26 @@
+name: total_questions_asked
+description: >-
+  Total number of AI questions asked on the platform, optionally filtered by date
+  range. Use for "how many questions were asked in <period>" or "total question volume".
+aliases:
+  - "total questions"
+  - "questions asked"
+  - "question count"
+  - "how many questions"
+  - "number of questions asked"
+  - "AI question volume"
+owner: analytics-team
+certified: true
+source: questions_to_sql.md#Q2
+returns:
+  response_type: text
+  value: total_questions
+
+date_filter:
+  column: message_date
+
+sql_template: |
+  SELECT COUNT(*) AS total_questions
+  FROM nep_liftoffx_data_sample
+  WHERE activity_type = 'message' AND message_query IS NOT NULL{date_filter}
+  LIMIT 500

@@ -17,6 +17,13 @@ export interface TableData {
   rows: (string | number | null)[][];
 }
 
+export interface Provenance {
+  certified: boolean;
+  metric?: string;
+  confidence?: number;
+  metric_source?: string;
+}
+
 export interface ChatResponse {
   answer: string;
   response_type: ResponseType;
@@ -24,6 +31,7 @@ export interface ChatResponse {
   table_data?: TableData;
   sql_used?: string;
   session_id: string;
+  provenance?: Provenance;
 }
 
 export interface ChatMessage {
@@ -34,6 +42,7 @@ export interface ChatMessage {
   chart_config?: ChartConfig;
   table_data?: TableData;
   sql_used?: string;
+  provenance?: Provenance;
   timestamp: Date;
 }
 
