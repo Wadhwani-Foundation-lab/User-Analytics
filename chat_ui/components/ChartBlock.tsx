@@ -136,10 +136,12 @@ export default function ChartBlock({ config }: ChartBlockProps) {
                             },
                             scales: {
                                 x: {
+                                    stacked: !!config.stacked,
                                     ticks: { color: "#94a3b8", font: { size: 11 } },
                                     grid: { color: "#1e293b" },
                                 },
                                 y: {
+                                    stacked: !!config.stacked,
                                     ticks: { color: "#94a3b8", font: { size: 11 } },
                                     grid: { color: "#1e293b" },
                                 },

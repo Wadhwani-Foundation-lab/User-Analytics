@@ -45,6 +45,27 @@ _EVENT_STATUS_AND_BEFORE_RE = re.compile(r"\s+AND\s+event_status\s*=\s*'COMPLETE
 _EVENT_STATUS_ALONE_RE = re.compile(r"event_status\s*=\s*'COMPLETED'", re.IGNORECASE)
 
 
+# ── Deterministic fix for the user_type enum truncation bug ──────────────────
+# 'External'/'Internal' (without "Users") are never valid stored values for
+# user_type — the schema only has 'External Users' | 'Internal Users' |
+# 'Incomplete Profile' — yet the model periodically drops the suffix, which
+# silently zeroes out every row (a WHERE clause that can never match). Unlike
+# Rule 30/31/25 (judgment calls with legitimate exceptions), this has no
+# ambiguity: a straight string substitution is more reliable than depending on
+# a corrective retry succeeding.
+_USER_TYPE_EXTERNAL_RE = re.compile(r"user_type\s*=\s*'External'(?!\s*Users)", re.IGNORECASE)
+_USER_TYPE_INTERNAL_RE = re.compile(r"user_type\s*=\s*'Internal'(?!\s*Users)", re.IGNORECASE)
+
+
+def fix_user_type_enum(sql: str) -> str:
+    """Correct user_type = 'External'/'Internal' to the real enum values, unconditionally."""
+    if not sql:
+        return sql
+    sql = _USER_TYPE_EXTERNAL_RE.sub("user_type = 'External Users'", sql)
+    sql = _USER_TYPE_INTERNAL_RE.sub("user_type = 'Internal Users'", sql)
+    return sql
+
+
 _HISTORY_LOOKBACK_TURNS = 4
 
 
@@ -269,6 +290,30 @@ def wants_top_n(question: str) -> bool:
     return bool(_TOP_N_RE.search(question))
 
 
+# ── Guard for two-dimensional breakdown vs single-dimension certified metric ──
+# signups_by_segment (and similarly-shaped metrics) can only split by ONE
+# dimension via its `dimension` choice — it has no way to ALSO split by time
+# period. A question naming both a time axis ("month over month", "for
+# January and February") AND a category axis ("by company type") needs two
+# columns (chart_series_column), which only the free-form generator can
+# produce. Decline the single-dimension metric so it falls through.
+_TIME_AXIS_RE = re.compile(
+    r"(month.over.month|week.over.week|day.over.day|monthly|weekly|trend|"
+    r"over time|for \w+ and \w+ 20\d\d|across \w+ and \w+)",
+    re.IGNORECASE,
+)
+_CATEGORY_AXIS_RE = re.compile(
+    r"(by\s+company\s*type|by\s+user\s*type|by\s+segment|by\s+revenue|"
+    r"broken down by|grouped by)",
+    re.IGNORECASE,
+)
+
+
+def wants_two_dimensional_breakdown(question: str) -> bool:
+    """True if the question names both a time axis and a category axis together."""
+    return bool(_TIME_AXIS_RE.search(question) and _CATEGORY_AXIS_RE.search(question))
+
+
 # "overall"/"total"/etc. are explicit scalar-intent words. event_attendance_rate
 # is otherwise exempt from the breakdown-language shape check (see router.py)
 # since its typical single-filter use naturally lists multiple events without
@@ -459,6 +504,7 @@ def _finalise(d: dict, question: str, history: Optional[list[dict]] = None) -> d
     result = _normalise(d)
     result["sql"] = _strip_unrequested_completed_filter(result["sql"], question, history)
     result["sql"] = _strip_unrequested_active_filter(result["sql"], question, history)
+    result["sql"] = fix_user_type_enum(result["sql"])
     return result
 
 
@@ -469,5 +515,6 @@ def _normalise(d: dict) -> dict:
         "response_type": str(d.get("response_type", "text") or "text"),
         "chart_label_column": str(d.get("chart_label_column", "") or ""),
         "chart_value_column": str(d.get("chart_value_column", "") or ""),
+        "chart_series_column": str(d.get("chart_series_column", "") or ""),
         "nl_answer_template": str(d.get("nl_answer_template", "") or ""),
     }

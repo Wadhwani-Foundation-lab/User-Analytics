@@ -14,6 +14,7 @@ Return ONLY a single JSON object with exactly these keys:
   "response_type": "text|table|bar_chart|line_chart|pie_chart|funnel_chart",
   "chart_label_column": "<column name for x-axis / labels, or empty>",
   "chart_value_column": "<column name for y-axis / values, or empty>",
+  "chart_series_column": "<column name that splits the data into multiple series, or empty>",
   "nl_answer_template": "<short plain-text answer template; use {result} for scalar>"
 }
 
@@ -24,6 +25,24 @@ response_type selection guide:
 - line_chart  → time-series trend (period on x-axis)
 - pie_chart   → proportions / percentage breakdown
 - funnel_chart→ sequential conversion stages (signup → activity → retention)
+
+chart_series_column — TWO-DIMENSIONAL breakdowns (e.g. "signups by company type
+across January and February", "monthly active users by user type"):
+- SQL must return the two dimensions as SEPARATE columns (one row per
+  label × series combination), never concatenated into one label string.
+  e.g. SELECT signup_month, company_type, COUNT(*) AS users ... GROUP BY
+  signup_month, company_type — NOT SELECT signup_month || ' - ' || company_type
+  AS segment, COUNT(*) ...
+- chart_label_column = the primary axis (usually time: month/week/day, or the
+  main comparison dimension). chart_series_column = the secondary dimension
+  that splits each label into multiple series (e.g. company_type, user_type,
+  program). chart_value_column = the measure.
+- Prefer line_chart when the primary axis is time (trend per series over
+  periods) and there are 3+ periods. Prefer bar_chart (rendered stacked) when
+  the primary axis is a fixed set of categories (e.g. 2 months, or programs)
+  rather than a continuous trend.
+- Leave chart_series_column empty for a single-dimension breakdown — do not
+  invent a series split the question didn't ask for.
 
 When clarifying, set sql="" and put your question in nl_answer_template.
 No prose outside the JSON block. No markdown fences around it.
@@ -467,6 +486,28 @@ SQL CONSTRAINTS — follow every rule, no exceptions:
       SELECT 'Completed Onboarding' AS stage_name, COUNT(DISTINCT userid) AS users
       FROM nep_liftoffx_data_sample
       WHERE activity_type = 'signup' AND user_type = 'External Users' AND company_type = 'startup'
+      LIMIT 500
+
+    "homepage-to-onboarding-to-first-message" / "landed on the homepage ...
+    completed the onboarding flow" is a THREE-stage funnel using exactly the
+    three mappings above in sequence — homepage, then signup, then message.
+    Do NOT substitute a different "Signups → Completed Onboarding →
+    Message" pattern that skips homepage and uses journey_explore /
+    introductory_video_reg_users for "onboarding" instead — that is a
+    different, unrelated funnel shape (used only when the question never
+    mentions "homepage" at all). If the question says "homepage", stage 1
+    MUST be ga_event_name = 'homepage_landed', never activity_type = 'signup'.
+      SELECT 'Landed on Homepage' AS stage_name, COUNT(DISTINCT userid) AS users
+      FROM nep_liftoffx_data_sample
+      WHERE ga_event_name = 'homepage_landed' AND user_type = 'External Users' AND company_type = 'startup'
+      UNION ALL
+      SELECT 'Completed Onboarding' AS stage_name, COUNT(DISTINCT userid) AS users
+      FROM nep_liftoffx_data_sample
+      WHERE activity_type = 'signup' AND user_type = 'External Users' AND company_type = 'startup'
+      UNION ALL
+      SELECT 'Sent First AI Message' AS stage_name, COUNT(DISTINCT userid) AS users
+      FROM nep_liftoffx_data_sample
+      WHERE activity_type = 'message' AND message_query IS NOT NULL AND user_type = 'External Users' AND company_type = 'startup'
       LIMIT 500
 
 25. First-activity-after-signup — when computing time-to-first-activity (conversion
