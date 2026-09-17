@@ -10,6 +10,9 @@ jobs:
   certified-eval:
     name: Certified metrics eval (certified_only)
     runs-on: ubuntu-latest
+    # Non-blocking: surfaces regressions without gating merges on live
+    # secrets/API access being correctly configured for every PR.
+    continue-on-error: true
 
     steps:
       - uses: actions/checkout@v4
