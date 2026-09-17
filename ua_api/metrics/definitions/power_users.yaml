@@ -1,0 +1,33 @@
+name: power_users
+description: >-
+  Distribution of AI users by how many questions they asked, bucketed into
+  one-time / casual / engaged / power-user tiers.
+aliases: ["power users", "heavy users", "question distribution",
+          "how many power users", "user engagement tiers", "casual vs power users"]
+owner: analytics-team
+certified: true
+source: questions_to_sql.md#Q16
+returns:
+  response_type: bar_chart
+  label: user_segment
+  value: users
+
+# Subquery form (no CTE).
+sql_template: |
+  SELECT
+    CASE
+      WHEN questions_asked = 1 THEN '1 question (one-time)'
+      WHEN questions_asked BETWEEN 2 AND 5 THEN '2-5 questions (casual)'
+      WHEN questions_asked BETWEEN 6 AND 10 THEN '6-10 questions (engaged)'
+      ELSE '10+ questions (power user)'
+    END AS user_segment,
+    COUNT(*) AS users
+  FROM (
+    SELECT userid, COUNT(*) AS questions_asked
+    FROM nep_liftoffx_data_sample
+    WHERE activity_type = 'message' AND message_query IS NOT NULL
+    GROUP BY userid
+  ) t
+  GROUP BY user_segment
+  ORDER BY MIN(questions_asked)
+  LIMIT 500

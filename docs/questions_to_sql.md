@@ -1605,9 +1605,9 @@ LIMIT 500;
 
 ---
 
-### Q50. Month-over-month growth rate using LAG (NO CTEs — use subquery wrapper)
+### Q50. Month-over-month growth rate using LAG (subquery wrapper)
 
-**CRITICAL: NEVER use WITH ... AS (CTEs). Use a subquery wrapper for window functions like LAG.**
+**Apply window functions like LAG over a subquery result (shown below). A CTE works too — both are valid; pick whichever is clearer.**
 
 ```sql
 SELECT
@@ -1630,7 +1630,7 @@ ORDER BY month
 LIMIT 500;
 ```
 
-**What it does:** Month-over-month growth using LAG window function applied to a subquery result — NO CTE needed. The subquery computes monthly counts, the outer SELECT applies LAG.
+**What it does:** Month-over-month growth using LAG window function applied to a subquery result. The subquery computes monthly counts, the outer SELECT applies LAG. (A CTE form is equally valid.)
 
 ---
 
@@ -1660,9 +1660,9 @@ FROM (
 
 ---
 
-### Q51. User journey funnel percentage (NO CTEs — use subqueries)
+### Q51. User journey funnel percentage (nested subqueries)
 
-**CRITICAL: For multi-step funnels with percentages, use nested subqueries, NEVER CTEs.**
+**For multi-step funnels with percentages, nested subqueries work well (shown below). A CTE form is equally valid — both are supported.**
 
 ```sql
 SELECT
@@ -1694,7 +1694,7 @@ CROSS JOIN (
 LIMIT 500;
 ```
 
-**What it does:** Funnel analysis using CROSS JOIN of separate scalar subqueries. No CTEs needed.
+**What it does:** Funnel analysis using CROSS JOIN of separate scalar subqueries. (A CTE form is equally valid.)
 
 ---
 
@@ -1725,3 +1725,204 @@ LIMIT 500;
 ```
 
 **What it does:** Uses the events table for BOTH numerator (attended) and denominator (all registered). Program comes from `program_key` in events table only — NEVER use traffic_source_campaign as a program proxy.
+
+---
+
+## CORRECTED PATTERNS (from LLM judge findings — highest-priority exemplars)
+
+These examples encode Class-B semantic corrections. Each one was generated incorrectly
+by the system and then corrected by the LLM judge. Study the "What was wrong" note.
+
+---
+
+### QC1. Listing mentors — always GROUP BY user_id to deduplicate the exploded table
+
+**Question:** List all EXPERT-type mentors across Liftoff and Liftoff-Propel based in Maharashtra or Karnataka with PUBLIC visibility.
+
+**What was wrong:** Selecting raw rows from the mentor table returns ~33 rows per mentor (exploded by industry/stage). LIMIT 500 then cuts off most distinct mentors before they appear. Always GROUP BY user_id and aggregate other columns with MAX().
+
+```sql
+SELECT
+  m.user_id,
+  MAX(m.first_name)  AS first_name,
+  MAX(m.last_name)   AS last_name,
+  MAX(m.email)       AS email,
+  MAX(m.title)       AS title,
+  MAX(m.program)     AS program,
+  MAX(m.state)       AS state,
+  MAX(m.city)        AS city
+FROM nep_mentor_profiles_sample_data m
+WHERE m.mentor_type  = 'EXPERT'
+  AND m.program      IN ('liftoff', 'liftoff-propel')
+  AND m.state        IN ('Maharashtra', 'Karnataka')
+  AND m.visibility   = 'PUBLIC'
+  AND m.user_status  = 'ACTIVE'
+  AND m.deleted      = false
+GROUP BY m.user_id
+ORDER BY MAX(m.state), MAX(m.last_name)
+LIMIT 500;
+```
+
+**What it does:** One row per distinct mentor. `GROUP BY user_id` collapses the ~33 exploded rows per mentor into one, with `MAX()` picking a representative value for text attributes.
+
+---
+
+### QC2. Attendance/no-show rates — correct denominator is ALL participants, not REGISTERED-only
+
+**Question:** Compare Expert Sessions vs Round Tables across all three programs for completed January 2026 events.
+
+**What was wrong:** Using `COUNT(*) FILTER (WHERE participant_status='REGISTERED')` as the denominator excludes attended and no-show rows, producing rates >100%. The denominator must be ALL rows (all statuses) for the event.
+
+```sql
+SELECT
+  e.program_key,
+  e.sessiontype,
+  COUNT(DISTINCT e.event_id)                                                        AS total_events,
+  COUNT(DISTINCT e.participant_user_id)                                              AS total_registrations,
+  COUNT(DISTINCT CASE WHEN e.participant_status = 'ATTENDED' THEN e.participant_user_id END) AS total_attended,
+  COUNT(DISTINCT CASE WHEN e.participant_status = 'NOSHOW'   THEN e.participant_user_id END) AS total_no_shows,
+  ROUND(
+    COUNT(DISTINCT CASE WHEN e.participant_status = 'ATTENDED' THEN e.participant_user_id END)::NUMERIC
+    / NULLIF(COUNT(DISTINCT e.participant_user_id), 0) * 100, 2
+  ) AS attendance_rate_pct
+FROM nep_master_live_events_data e
+WHERE e.event_status = 'COMPLETED'
+  AND e.start_date >= '2026-01-01' AND e.start_date < '2026-02-01'
+  AND e.sessiontype IN ('expertSession', 'roundTable')
+GROUP BY e.program_key, e.sessiontype
+ORDER BY e.program_key, total_events DESC
+LIMIT 500;
+```
+
+**What it does:** `COUNT(DISTINCT participant_user_id)` = all participants (any status) = correct denominator. CASE WHEN inside COUNT(DISTINCT ...) picks only the attending/no-show users for the numerator. Rates are always 0–100%.
+
+---
+
+### QC3. Event registration-to-attendance conversion — align numerator and denominator on distinct users
+
+**Question:** What is event registration-to-attendance conversion for platform users, segmented by company type?
+
+**What was wrong:** `SUM(ATTENDED rows) / COUNT(DISTINCT participant_user_id)` mixes a row-count numerator with a distinct-user denominator. Both must be on the same unit (distinct users).
+
+```sql
+SELECT
+  u.company_type,
+  COUNT(DISTINCT e.participant_user_id)                                                        AS registered_participants,
+  COUNT(DISTINCT CASE WHEN e.participant_status = 'ATTENDED' THEN e.participant_user_id END)  AS attended_participants,
+  ROUND(
+    COUNT(DISTINCT CASE WHEN e.participant_status = 'ATTENDED' THEN e.participant_user_id END)::NUMERIC
+    / NULLIF(COUNT(DISTINCT e.participant_user_id), 0) * 100, 2
+  ) AS conversion_rate_pct
+FROM nep_master_live_events_data e
+JOIN nep_master_user_table_sample_data u ON e.participant_user_id = u.user_id
+WHERE u.company_type IS NOT NULL
+GROUP BY u.company_type
+ORDER BY conversion_rate_pct DESC
+LIMIT 500;
+```
+
+**What it does:** Both numerator and denominator use `COUNT(DISTINCT participant_user_id)`, so the ratio is a true per-user conversion rate.
+
+---
+
+### QC4. Weekly/monthly active users — do NOT restrict to activity_type='message'
+
+**Question:** Show weekly active user trend for February 2026, segmented by company type and revenue range, for External Users only.
+
+**What was wrong:** Filtering `activity_type = 'message'` limits "active users" to AI-chat users only. "Active users" means any activity type unless the question specifically asks about AI chat messages.
+
+```sql
+SELECT
+  a.week_range,
+  a.month_year_order,
+  a.company_type,
+  a.company_revenue_range,
+  COUNT(DISTINCT a.userid) AS weekly_active_users
+FROM nep_liftoffx_data_sample a
+WHERE a.user_type    = 'External Users'
+  AND a.ga_event_date >= '2026-02-01'
+  AND a.ga_event_date  < '2026-03-01'
+GROUP BY a.week_range, a.month_year_order, a.company_type, a.company_revenue_range
+ORDER BY a.month_year_order, a.week_range, a.company_type, a.company_revenue_range
+LIMIT 500;
+```
+
+**What it does:** Counts any distinct userid with activity in February 2026. `week_range` + `month_year_order` gives the correct grouping without splitting a week across rows.
+
+---
+
+### QC5. Cohort activity decay — use week_activity_number, not a mix of calendar and relative weeks
+
+**Question:** For Oct 2025 signup cohort, show week-by-week activity decay, filtered to startup users only.
+
+**What was wrong:** (1) Restricting to `activity_type='message'` counts AI-chat engagement only, not overall activity decay. (2) Grouping by both `week_range` AND `week_activity_number` fragments the curve — use only `week_activity_number` (weeks since signup) for a cohort decay view.
+
+```sql
+SELECT
+  a.week_activity_number,
+  COUNT(DISTINCT a.userid) AS active_users,
+  ROUND(
+    COUNT(DISTINCT a.userid)::NUMERIC
+    / NULLIF(
+        (SELECT COUNT(DISTINCT userid)
+         FROM nep_liftoffx_data_sample
+         WHERE activity_type = 'signup'
+           AND signup_date >= '2025-10-01' AND signup_date < '2025-11-01'
+           AND company_type = 'startup'),
+        0
+      ) * 100, 2
+  ) AS pct_of_cohort
+FROM nep_liftoffx_data_sample a
+WHERE a.userid IN (
+    SELECT userid FROM nep_liftoffx_data_sample
+    WHERE activity_type = 'signup'
+      AND signup_date >= '2025-10-01' AND signup_date < '2025-11-01'
+      AND company_type = 'startup'
+  )
+  AND a.week_activity_number IS NOT NULL
+GROUP BY a.week_activity_number
+ORDER BY a.week_activity_number ASC
+LIMIT 500;
+```
+
+**What it does:** Cohort = startup signups in Oct 2025. `week_activity_number` = weeks since their signup. Decay = % of that cohort still active in each subsequent week.
+
+---
+
+### QC6. Cross-program comparison — use separate subqueries per metric, then FULL OUTER JOIN
+
+**Question:** Compare total active mentors, completed events, and registered beneficiaries across programs for January 2026.
+
+**What was wrong:** The mentor subquery used a cumulative date filter (`created_at < '2026-02-01'`) while events used a January-only filter — making the three metrics incomparable. Mentor "active in January" is underivable from the profile table (no activity dates); use `user_status = 'ACTIVE'` as the closest proxy.
+
+```sql
+SELECT
+  COALESCE(m.prog, e.prog, b.prog) AS program_key,
+  COALESCE(m.active_mentors, 0)          AS active_mentors,
+  COALESCE(e.completed_events, 0)        AS completed_events,
+  COALESCE(b.registered_beneficiaries, 0) AS registered_beneficiaries
+FROM
+  (SELECT program AS prog, COUNT(DISTINCT user_id) AS active_mentors
+   FROM nep_mentor_profiles_sample_data
+   WHERE user_status = 'ACTIVE' AND deleted = false
+     AND program IN ('liftoff', 'liftoff-spark', 'liftoff-propel')
+   GROUP BY program) m
+FULL OUTER JOIN
+  (SELECT program_key AS prog, COUNT(DISTINCT event_id) AS completed_events
+   FROM nep_master_live_events_data
+   WHERE event_status = 'COMPLETED'
+     AND program_key IN ('liftoff', 'liftoff-spark', 'liftoff-propel')
+     AND start_date >= '2026-01-01' AND start_date < '2026-02-01'
+   GROUP BY program_key) e ON m.prog = e.prog
+FULL OUTER JOIN
+  (SELECT program_key AS prog, COUNT(DISTINCT participant_user_id) AS registered_beneficiaries
+   FROM nep_master_live_events_data
+   WHERE program_key IN ('liftoff', 'liftoff-spark', 'liftoff-propel')
+     AND start_date >= '2026-01-01' AND start_date < '2026-02-01'
+   GROUP BY program_key) b ON COALESCE(m.prog, e.prog) = b.prog
+ORDER BY program_key
+LIMIT 500;
+```
+
+**What it does:** Each metric is computed in its own subquery on a consistent scope. FULL OUTER JOIN ensures programs that have mentors but no January events (or vice versa) still appear. Mentor count uses `user_status='ACTIVE'` — the best available proxy since the mentor table has no engagement dates.
+

@@ -1,0 +1,47 @@
+name: Regression — Certified Metrics
+
+on:
+  workflow_dispatch:   # run manually from the Actions tab when needed
+
+jobs:
+  certified-eval:
+    name: Certified metrics eval (certified_only)
+    runs-on: ubuntu-latest
+    # Non-blocking: surfaces regressions without gating merges on live
+    # secrets/API access being correctly configured for every PR.
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          pip install -r chat_api/requirements.txt
+          pip install -r ua_api/metrics/requirements.txt
+
+      - name: Write .env
+        run: |
+          cat > chat_api/.env <<EOF
+          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY=${{ secrets.SUPABASE_SERVICE_KEY }}
+          ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
+          EOF
+
+      - name: Run certified-only eval
+        run: |
+          python -m ua_api.validation \
+            --mode certified_only \
+            --output validation_results.json
+
+      - name: Upload results artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-results-${{ github.run_number }}
+          path: validation_results.json
+          retention-days: 30

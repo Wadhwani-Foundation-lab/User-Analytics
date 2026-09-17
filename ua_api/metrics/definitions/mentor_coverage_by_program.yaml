@@ -1,0 +1,46 @@
+name: mentor_coverage_by_program
+description: >-
+  Count of non-deleted mentors broken down by program (Liftoff, Liftoff-Spark,
+  Liftoff-Propel, Ignite). Defaults to mentors of any status; optionally
+  filtered to ACTIVE-only. Always uses COUNT(DISTINCT user_id) because the
+  mentor table is exploded ~33× per mentor. Use for "how many mentors are in
+  each program?", "mentor count by program", "which program has the most
+  mentors?", or "mentor coverage across programs".
+aliases:
+  - "mentors by program"
+  - "mentor count by program"
+  - "mentor coverage by program"
+  - "how many mentors per program"
+  - "active mentors in each program"
+  - "which program has the most mentors"
+  - "mentor supply by program"
+  - "mentors across programs"
+  - "compare mentor count across liftoff programs"
+  - "total active mentors per program"
+owner: analytics-team
+certified: true
+source: questions_to_sql.md#Q21,Q22
+returns:
+  response_type: bar_chart
+  label: program
+  value: active_mentors
+
+choices:
+  user_status:
+    default: all
+    map:
+      all:
+        user_status_filter: ""
+      active:
+        user_status_filter: " AND user_status = 'ACTIVE'"
+
+sql_template: |
+  SELECT
+    program,
+    COUNT(DISTINCT user_id) AS active_mentors
+  FROM nep_mentor_profiles_sample_data
+  WHERE deleted = false
+    AND program IS NOT NULL{user_status_filter}
+  GROUP BY program
+  ORDER BY active_mentors DESC
+  LIMIT 500

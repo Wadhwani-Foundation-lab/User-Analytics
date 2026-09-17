@@ -1,0 +1,39 @@
+name: retention_by_channel
+description: >-
+  Repeat user retention rate broken down by acquisition channel (traffic source).
+  "Retained" means active in at least 2 different calendar months. Use for
+  "which channel brings the most loyal users" or "retention by traffic source".
+aliases:
+  - "retention by channel"
+  - "retention by traffic source"
+  - "channel retention"
+  - "which channel has best retention"
+  - "acquisition channel retention"
+  - "traffic source retention"
+owner: analytics-team
+certified: true
+source: questions_to_sql.md#Q15
+returns:
+  response_type: bar_chart
+  label: channel
+  value: retention_rate_pct
+
+sql_template: |
+  SELECT
+    COALESCE(u.traffic_source_source, 'Unknown') AS channel,
+    COUNT(DISTINCT u.user_id) AS total_users,
+    COUNT(DISTINCT CASE WHEN um.months_active >= 2 THEN u.user_id END) AS retained_users,
+    ROUND(
+      COUNT(DISTINCT CASE WHEN um.months_active >= 2 THEN u.user_id END)::NUMERIC
+      / NULLIF(COUNT(DISTINCT u.user_id), 0) * 100, 2
+    ) AS retention_rate_pct
+  FROM nep_master_user_table_sample_data u
+  LEFT JOIN (
+    SELECT userid, COUNT(DISTINCT month_year_order) AS months_active
+    FROM nep_liftoffx_data_sample
+    WHERE activity_type = 'message' AND message_query IS NOT NULL
+    GROUP BY userid
+  ) um ON u.user_id = um.userid
+  GROUP BY channel
+  ORDER BY retention_rate_pct DESC
+  LIMIT 500

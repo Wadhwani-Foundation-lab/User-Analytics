@@ -1,0 +1,70 @@
+name: events_by_program
+description: >-
+  Events and attendance broken down by program (liftoff, liftoff-propel,
+  liftoff-spark) and session type (roundTable, expertSession). Defaults to
+  events of any status (OPEN or COMPLETED); optionally filtered to
+  completed-only events and/or a date range. Use for "compare Expert Sessions
+  vs Round Tables across programs", "how many events per program", "attendance
+  by session type in Q1 2026", "month-over-month attendance trends by program
+  and session type".
+aliases:
+  - "events by program"
+  - "program attendance"
+  - "events breakdown by program"
+  - "attendance by program"
+  - "how many events per program"
+  - "events and attendance by program type"
+  - "compare expert sessions vs round tables"
+  - "compare session types across programs"
+  - "expert session vs round table attendance"
+  - "events by session type and program"
+  - "month over month event attendance trends"
+  - "monthly event attendance by program"
+  - "attendance trends by session type and program"
+owner: analytics-team
+certified: true
+source: questions_to_sql.md#Q25
+returns:
+  response_type: table
+  label: program_key
+  value: attendance_rate_pct
+
+date_filter:
+  column: start_date
+
+choices:
+  grain:
+    default: total
+    map:
+      total:
+        month_col: ""
+        month_group: ""
+        month_order: ""
+      monthly:
+        month_col: "TO_CHAR(start_date, 'YYYY-MM') AS month,\n    "
+        month_group: "TO_CHAR(start_date, 'YYYY-MM'), "
+        month_order: "TO_CHAR(start_date, 'YYYY-MM'), "
+  event_status:
+    default: all
+    map:
+      all:
+        event_status_filter: ""
+      completed:
+        event_status_filter: " AND event_status = 'COMPLETED'"
+
+sql_template: |
+  SELECT
+    {month_col}program_key,
+    sessiontype,
+    COUNT(DISTINCT event_id) AS total_events,
+    SUM(CASE WHEN participant_status = 'ATTENDED' THEN 1 ELSE 0 END) AS total_attended,
+    COUNT(*) AS total_registrations,
+    ROUND(
+      SUM(CASE WHEN participant_status = 'ATTENDED' THEN 1 ELSE 0 END)::NUMERIC
+      / NULLIF(COUNT(*), 0) * 100, 2
+    ) AS attendance_rate_pct
+  FROM nep_master_live_events_data
+  WHERE 1=1{event_status_filter}{date_filter}
+  GROUP BY {month_group}program_key, sessiontype
+  ORDER BY {month_order}program_key, total_attended DESC
+  LIMIT 500

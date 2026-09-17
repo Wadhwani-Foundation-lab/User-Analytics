@@ -14,7 +14,7 @@ class ChatRequest(BaseModel):
 
 
 class ChartConfig(BaseModel):
-    type: Literal["bar", "line", "pie"]
+    type: Literal["bar", "line", "pie", "funnel"]
     labels: List[str]
     datasets: List[Dict[str, Any]]
     title: Optional[str] = None
@@ -27,7 +27,7 @@ class TableData(BaseModel):
 
 class ChatResponse(BaseModel):
     answer: str
-    response_type: Literal["text", "table", "bar_chart", "line_chart", "pie_chart"]
+    response_type: Literal["text", "table", "bar_chart", "line_chart", "pie_chart", "funnel_chart"]
     chart_config: Optional[ChartConfig] = None
     table_data: Optional[TableData] = None
     sql_used: Optional[str] = None

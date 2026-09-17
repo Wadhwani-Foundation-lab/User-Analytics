@@ -1,0 +1,55 @@
+name: signups_by_segment
+description: >-
+  New user signups broken down by a chosen dimension: company type (startup vs
+  MSME), user type (External vs Internal), revenue range, or traffic source
+  medium. Optionally filtered to a date range. Use for "how many startups signed
+  up?", "signups by revenue range", "which traffic source brings the most
+  signups?", or "compare signup counts by company type".
+aliases:
+  - "signups by company type"
+  - "signups by user type"
+  - "signups by segment"
+  - "signups by revenue range"
+  - "signups by traffic source"
+  - "signup breakdown by type"
+  - "how many startups signed up"
+  - "how many MSMEs signed up"
+  - "compare signup counts by company type"
+  - "new users by company type"
+  - "new signups by channel"
+  - "signups per medium"
+owner: analytics-team
+certified: true
+source: questions_to_sql.md#Q5
+returns:
+  response_type: bar_chart
+  label: segment
+  value: signups
+
+date_filter:
+  column: created_datetime
+
+choices:
+  dimension:
+    default: company_type
+    map:
+      company_type:
+        dim_col: "company_type"
+      user_type:
+        dim_col: "user_type"
+      revenue_range:
+        dim_col: "company_revenue_range"
+      traffic_source:
+        dim_col: "traffic_source_source"
+      traffic_medium:
+        dim_col: "traffic_source_medium"
+
+sql_template: |
+  SELECT
+    {dim_col} AS segment,
+    COUNT(*) AS signups
+  FROM nep_master_user_table_sample_data
+  WHERE 1=1{date_filter}
+  GROUP BY {dim_col}
+  ORDER BY signups DESC
+  LIMIT 500

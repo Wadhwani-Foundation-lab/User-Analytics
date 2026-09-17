@@ -67,6 +67,7 @@ export default function Home() {
         chart_config: response.chart_config,
         table_data: response.table_data,
         sql_used: response.sql_used,
+        provenance: response.provenance,
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, assistantMsg]);

@@ -1,0 +1,45 @@
+name: weekly_retention
+description: >-
+  Week-over-week user retention: the percentage of active users this week who were
+  also active the previous week. Shows how sticky the platform is across all weeks.
+aliases:
+  - "WoW retention"
+  - "week over week retention"
+  - "weekly retention rate"
+  - "user retention by week"
+  - "how sticky are users week over week"
+  - "weekly user retention"
+owner: analytics-team
+certified: true
+source: questions_to_sql.md#Q13
+returns:
+  response_type: table
+  label: current_week
+  value: retention_rate_pct
+
+sql_template: |
+  SELECT
+    curr.week_range    AS current_week,
+    COUNT(DISTINCT curr.userid) AS active_users,
+    COUNT(DISTINCT prev.userid) AS retained_from_prev_week,
+    ROUND(
+      COUNT(DISTINCT prev.userid)::NUMERIC
+      / NULLIF(COUNT(DISTINCT curr.userid), 0) * 100, 2
+    ) AS retention_rate_pct
+  FROM (
+    SELECT year_monthnumber_weekstart_order AS week_order,
+           week_range, userid
+    FROM nep_liftoffx_data_sample
+    WHERE activity_type = 'message' AND message_query IS NOT NULL
+    GROUP BY year_monthnumber_weekstart_order, week_range, userid
+  ) curr
+  LEFT JOIN (
+    SELECT year_monthnumber_weekstart_order AS week_order, userid
+    FROM nep_liftoffx_data_sample
+    WHERE activity_type = 'message' AND message_query IS NOT NULL
+    GROUP BY year_monthnumber_weekstart_order, userid
+  ) prev ON prev.userid = curr.userid
+         AND prev.week_order = curr.week_order - 1
+  GROUP BY curr.week_range, curr.week_order
+  ORDER BY curr.week_order
+  LIMIT 500

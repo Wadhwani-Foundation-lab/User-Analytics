@@ -1,0 +1,176 @@
+name: nep_master_user_table_sample_data
+description: >-
+  Master user registry. One row per registered user. Contains identity, profile
+  status, acquisition channel and role information. Primary table for all
+  user-level analysis.
+grain: One row per registered user (user_id is unique).
+owner: analytics-team
+source_csv: csvfiles/nep_master_user_table_sample_data.csv
+primary_key: user_id
+
+# This table has no outgoing foreign keys; it is the hub other tables join to.
+joins: []
+
+columns:
+  - name: user_id
+    logical_type: id
+    db_type: TEXT
+    description: Primary key. UUID for the user. Hub key joined by activity, events and mentor tables.
+    nullable: false
+    is_key: true
+    sample_values: ["582c9145-afe4-4370-8426-a9b7d8ef3c82"]
+  - name: login_status
+    logical_type: enum
+    db_type: TEXT
+    description: >
+      User's login / profile completion status. Contains 'completedprofile' but
+      also reflects login milestones (OTP, phone). Use profile_status for a pure
+      "did the user complete their profile?" check.
+    enum_values: ["completedprofile", "verifiedphone", "not_entered_otp"]
+  - name: profile_status
+    logical_type: enum
+    db_type: TEXT
+    description: >
+      CANONICAL profile-completion check. Use profile_status = 'completedprofile'
+      (not login_status) when the question is about whether a user completed their profile.
+    enum_values: ["completedprofile"]
+    authority: true
+  - name: phone_status
+    logical_type: enum
+    db_type: TEXT
+    description: Phone OTP verification status. Vocabulary confirmed against live data.
+    enum_values: ["verifiedphone", "not_entered_otp"]
+  - name: activity_date
+    logical_type: date_string
+    db_type: DATE
+    description: Date when the user record was last active or created.
+    date_format: '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+    sample_values: ["2025-09-30"]
+  - name: created_datetime
+    logical_type: timestamp
+    db_type: TIMESTAMP
+    description: Full timestamp of user account creation.
+    date_format: '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+    sample_values: ["2025-09-30 06:02:09.88"]
+  - name: otp_verified_date
+    logical_type: date_string
+    db_type: DATE
+    description: Date phone OTP was verified.
+    date_format: '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+  - name: otp_verified_datetime
+    logical_type: timestamp
+    db_type: TIMESTAMP
+    description: Full timestamp of OTP verification.
+    date_format: '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+  - name: profile_user_id
+    logical_type: id
+    db_type: TEXT
+    description: UUID of the user's profile record (often same as user_id).
+  - name: user_uuid
+    logical_type: id
+    db_type: TEXT
+    description: Alternate UUID used across some subsystems.
+  - name: user_email
+    logical_type: text
+    db_type: TEXT
+    description: User's registered email address.
+    sample_values: ["shashi.kiran@wadhwanifoundation.org"]
+  - name: user_first_name
+    logical_type: text
+    db_type: TEXT
+    description: User's first name.
+  - name: user_last_name
+    logical_type: text
+    db_type: TEXT
+    description: User's last name.
+  - name: user_profile_status
+    logical_type: enum
+    db_type: TEXT
+    description: Account activation status.
+    enum_values: ["ACTIVE"]
+  - name: user_country_code
+    logical_type: text
+    db_type: TEXT
+    description: Country dial code (stored as text).
+    sample_values: ["91"]
+  - name: user_phone_number
+    logical_type: text
+    db_type: TEXT
+    description: User's phone number.
+  - name: user_preferred_language
+    logical_type: text
+    db_type: TEXT
+    description: ISO 639-1 language code.
+    sample_values: ["en", "kn", "hi"]
+  - name: user_profile_completion_date
+    logical_type: date_string
+    db_type: DATE
+    description: Date the user completed their profile.
+    date_format: '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+  - name: user_type
+    logical_type: enum
+    db_type: TEXT
+    description: Whether user is internal staff, external entrepreneur, or incomplete.
+    enum_values: ["Internal Users", "External Users", "Incomplete Profile"]
+  - name: company_type
+    logical_type: enum
+    db_type: TEXT
+    description: Type of company the user is associated with.
+    enum_values: ["startup", "msme"]
+  - name: company_revenue_range
+    logical_type: enum
+    db_type: TEXT
+    description: Revenue range bracket.
+    enum_values: ["above-5-crore", "pre-revenue", "1-5-crore"]
+  - name: user_type_datekey1
+    logical_type: text
+    db_type: TEXT
+    description: Composite key for cohort segmentation (date + user_type + company).
+  - name: user_type_datekey2
+    logical_type: text
+    db_type: TEXT
+    description: As datekey1 with traffic source appended.
+  - name: traffic_source_source
+    logical_type: text
+    db_type: TEXT
+    description: Acquisition source (UTM source).
+    sample_values: ["WA", "meta", "EEPC", "DevX"]
+  - name: traffic_source_medium
+    logical_type: text
+    db_type: TEXT
+    description: Acquisition medium (UTM medium).
+    sample_values: ["leaflet", "social", "Emailer", "Email"]
+  - name: traffic_source_campaign
+    logical_type: text
+    db_type: TEXT
+    description: Acquisition campaign name (UTM campaign).
+  - name: user_profile_updated_date
+    logical_type: date_string
+    db_type: DATE
+    description: Most recent date the user profile was modified.
+    date_format: '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+  - name: user_role
+    logical_type: enum
+    db_type: TEXT
+    description: Role assigned to the user.
+    enum_values: ["STUDENT"]
+  - name: user_beta_feature
+    logical_type: text
+    db_type: TEXT
+    description: Beta feature flag (mostly null).
+  - name: user_language_proficiency
+    logical_type: json
+    db_type: JSONB
+    description: Language proficiency data.
+  - name: message_user_id
+    logical_type: id
+    db_type: TEXT
+    description: UUID for the messaging / AI chat system.
+  - name: se_me_re_user_id
+    logical_type: id
+    db_type: TEXT
+    description: UUID for the Expert Sessions / Mentoring / Resources module.
+  - name: jc_user_id
+    logical_type: id
+    db_type: TEXT
+    description: UUID for the Jobs / Connections module.

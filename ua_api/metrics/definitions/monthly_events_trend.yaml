@@ -1,0 +1,32 @@
+name: monthly_events_trend
+description: >-
+  Monthly trend of live events: total events scheduled, total registrations,
+  and attendance per month. Use for "how many events per month", "event
+  attendance over time", or "monthly event registrations".
+aliases:
+  - "monthly events"
+  - "events per month"
+  - "event trend"
+  - "events over time"
+  - "how many events each month"
+  - "monthly event registrations"
+  - "event attendance by month"
+owner: analytics-team
+certified: true
+source: questions_to_sql.md#Q31
+returns:
+  response_type: line_chart
+  label: month
+  value: total_registrations
+
+sql_template: |
+  SELECT
+    TO_CHAR(start_date, 'YYYY-MM') AS month,
+    COUNT(DISTINCT event_id) AS total_events,
+    COUNT(*) AS total_registrations,
+    SUM(CASE WHEN participant_status = 'ATTENDED' THEN 1 ELSE 0 END) AS attended
+  FROM nep_master_live_events_data
+  WHERE start_date IS NOT NULL
+  GROUP BY TO_CHAR(start_date, 'YYYY-MM')
+  ORDER BY month ASC
+  LIMIT 500

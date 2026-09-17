@@ -1,0 +1,52 @@
+name: mentors_by_stage
+description: >-
+  Mentors broken down by startup stage expertise: Pre Idea, Idea, Early,
+  Growth, Demo. Identifies which startup stages have the most mentor coverage
+  and where supply gaps exist. Defaults to mentors of any status; optionally
+  filtered to ACTIVE-only, and/or to a single program.
+aliases:
+  - "mentors by stage"
+  - "mentor stage coverage"
+  - "startup stage mentors"
+  - "mentor expertise by stage"
+  - "which stage has most mentors"
+  - "mentor supply by startup stage"
+  - "mentor breakdown by stage"
+  - "how many mentors cover each stage"
+owner: analytics-team
+certified: true
+source: questions_to_sql.md#Q22
+returns:
+  response_type: bar_chart
+  label: stage_name
+  value: mentors
+
+choices:
+  program:
+    default: all
+    map:
+      all:
+        program_filter: ""
+      liftoff:
+        program_filter: " AND program = 'liftoff'"
+      liftoff-spark:
+        program_filter: " AND program = 'liftoff-spark'"
+      liftoff-propel:
+        program_filter: " AND program = 'liftoff-propel'"
+      ignite:
+        program_filter: " AND program = 'ignite'"
+  user_status:
+    default: all
+    map:
+      all:
+        user_status_filter: ""
+      active:
+        user_status_filter: " AND user_status = 'ACTIVE'"
+
+sql_template: |
+  SELECT stage_name, COUNT(DISTINCT user_id) AS mentors
+  FROM nep_mentor_profiles_sample_data
+  WHERE deleted = false{user_status_filter}{program_filter}
+  GROUP BY stage_name
+  ORDER BY mentors DESC
+  LIMIT 500

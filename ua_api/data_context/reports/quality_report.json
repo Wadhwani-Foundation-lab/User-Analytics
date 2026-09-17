@@ -1,0 +1,622 @@
+{
+  "generated_at": "2026-06-08T11:39:43.010899+00:00",
+  "tables_checked": [
+    "nep_liftoffx_data_sample",
+    "nep_master_live_events_data",
+    "nep_master_user_table_sample_data",
+    "nep_mentor_profiles_sample_data"
+  ],
+  "summary": {
+    "PASS": 60,
+    "WARN": 3,
+    "FAIL": 1,
+    "ERROR": 0
+  },
+  "results": [
+    {
+      "check": "volume",
+      "table": "nep_liftoffx_data_sample",
+      "target": "table",
+      "status": "PASS",
+      "count": 154904,
+      "detail": "154904 rows",
+      "samples": []
+    },
+    {
+      "check": "null_keys",
+      "table": "nep_liftoffx_data_sample",
+      "target": "userid",
+      "status": "PASS",
+      "count": 0,
+      "detail": "no nulls in key",
+      "samples": []
+    },
+    {
+      "check": "null_keys",
+      "table": "nep_liftoffx_data_sample",
+      "target": "activity_id",
+      "status": "PASS",
+      "count": 0,
+      "detail": "no nulls in key",
+      "samples": []
+    },
+    {
+      "check": "enum_validation",
+      "table": "nep_liftoffx_data_sample",
+      "target": "company_type",
+      "status": "PASS",
+      "count": 0,
+      "detail": "all values in declared vocabulary",
+      "samples": []
+    },
+    {
+      "check": "enum_validation",
+      "table": "nep_liftoffx_data_sample",
+      "target": "company_revenue_range",
+      "status": "PASS",
+      "count": 0,
+      "detail": "all values in declared vocabulary",
+      "samples": []
+    },
+    {
+      "check": "enum_validation",
+      "table": "nep_liftoffx_data_sample",
+      "target": "activity_type",
+      "status": "PASS",
+      "count": 0,
+      "detail": "all values in declared vocabulary",
+      "samples": []
+    },
+    {
+      "check": "enum_validation",
+      "table": "nep_liftoffx_data_sample",
+      "target": "response_type",
+      "status": "PASS",
+      "count": 0,
+      "detail": "all values in declared vocabulary",
+      "samples": []
+    },
+    {
+      "check": "enum_validation",
+      "table": "nep_liftoffx_data_sample",
+      "target": "response_flow_state",
+      "status": "PASS",
+      "count": 0,
+      "detail": "all values in declared vocabulary",
+      "samples": []
+    },
+    {
+      "check": "enum_validation",
+      "table": "nep_liftoffx_data_sample",
+      "target": "user_type",
+      "status": "PASS",
+      "count": 0,
+      "detail": "all values in declared vocabulary",
+      "samples": []
+    },
+    {
+      "check": "date_format",
+      "table": "nep_liftoffx_data_sample",
+      "target": "signup_date",
+      "status": "PASS",
+      "count": 0,
+      "detail": "dates match expected format",
+      "samples": []
+    },
+    {
+      "check": "date_format",
+      "table": "nep_liftoffx_data_sample",
+      "target": "created_at",
+      "status": "PASS",
+      "count": 0,
+      "detail": "dates match expected format",
+      "samples": []
+    },
+    {
+      "check": "date_format",
+      "table": "nep_liftoffx_data_sample",
+      "target": "response_timestamp",
+      "status": "PASS",
+      "count": 0,
+      "detail": "dates match expected format",
+      "samples": []
+    },
+    {
+      "check": "date_format",
+      "table": "nep_liftoffx_data_sample",
+      "target": "message_date",
+      "status": "PASS",
+      "count": 0,
+      "detail": "dates match expected format",
+      "samples": []
+    },
+    {
+      "check": "date_format",
+      "table": "nep_liftoffx_data_sample",
+      "target": "ga_event_date",
+      "status": "PASS",
+      "count": 0,
+      "detail": "dates match expected format",
+      "samples": []
+    },
+    {
+      "check": "volume",
+      "table": "nep_master_live_events_data",
+      "target": "table",
+      "status": "PASS",
+      "count": 291,
+      "detail": "291 rows",
+      "samples": []
+    },
+    {
+      "check": "null_keys",
+      "table": "nep_master_live_events_data",
+      "target": "event_id",
+      "status": "PASS",
+      "count": 0,
+      "detail": "no nulls in key",
+      "samples": []
+    },
+    {
+      "check": "enum_validation",
+      "table": "nep_master_live_events_data",
+      "target": "event_status",
+      "status": "PASS",
+      "count": 0,
+      "detail": "all values in declared vocabulary",
+      "samples": []
+    },
+    {
+      "check": "enum_validation",
+      "table": "nep_master_live_events_data",
+      "target": "client_name",
+      "status": "PASS",
+      "count": 0,
+      "detail": "all values in declared vocabulary",
+      "samples": []
+    },
+    {
+      "check": "enum_validation",
+      "table": "nep_master_live_events_data",
+      "target": "invite_type",
+      "status": "PASS",
+      "count": 0,
+      "detail": "all values in declared vocabulary",
+      "samples": []
+    },
+    {
+      "check": "enum_validation",
+      "table": "nep_master_live_events_data",
+      "target": "program_key",
+      "status": "PASS",
+      "count": 0,
+      "detail": "all values in declared vocabulary",
+      "samples": []
+    },
+    {
+      "check": "enum_validation",
+      "table": "nep_master_live_events_data",
+      "target": "gapkey",
+      "status": "PASS",
+      "count": 0,
+      "detail": "all values in declared vocabulary",
+      "samples": []
+    },
+    {
+      "check": "enum_validation",
+      "table": "nep_master_live_events_data",
+      "target": "sessiontype",
+      "status": "PASS",
+      "count": 0,
+      "detail": "all values in declared vocabulary",
+      "samples": []
+    },
+    {
+      "check": "enum_validation",
+      "table": "nep_master_live_events_data",
+      "target": "event_type",
+      "status": "PASS",
+      "count": 0,
+      "detail": "all values in declared vocabulary",
+      "samples": []
+    },
+    {
+      "check": "enum_validation",
+      "table": "nep_master_live_events_data",
+      "target": "participant_status",
+      "status": "PASS",
+      "count": 0,
+      "detail": "all values in declared vocabulary",
+      "samples": []
+    },
+    {
+      "check": "date_format",
+      "table": "nep_master_live_events_data",
+      "target": "start_datetime",
+      "status": "PASS",
+      "count": 0,
+      "detail": "dates match expected format",
+      "samples": []
+    },
+    {
+      "check": "date_format",
+      "table": "nep_master_live_events_data",
+      "target": "start_date",
+      "status": "PASS",
+      "count": 0,
+      "detail": "dates match expected format",
+      "samples": []
+    },
+    {
+      "check": "date_format",
+      "table": "nep_master_live_events_data",
+      "target": "end_datetime",
+      "status": "PASS",
+      "count": 0,
+      "detail": "dates match expected format",
+      "samples": []
+    },
+    {
+      "check": "date_format",
+      "table": "nep_master_live_events_data",
+      "target": "created_at",
+      "status": "PASS",
+      "count": 0,
+      "detail": "dates match expected format",
+      "samples": []
+    },
+    {
+      "check": "date_format",
+      "table": "nep_master_live_events_data",
+      "target": "updated_at",
+      "status": "PASS",
+      "count": 0,
+      "detail": "dates match expected format",
+      "samples": []
+    },
+    {
+      "check": "date_format",
+      "table": "nep_master_live_events_data",
+      "target": "participant_created_at",
+      "status": "PASS",
+      "count": 0,
+      "detail": "dates match expected format",
+      "samples": []
+    },
+    {
+      "check": "date_format",
+      "table": "nep_master_live_events_data",
+      "target": "participant_updated_at",
+      "status": "PASS",
+      "count": 0,
+      "detail": "dates match expected format",
+      "samples": []
+    },
+    {
+      "check": "date_format",
+      "table": "nep_master_live_events_data",
+      "target": "metadata_start_time",
+      "status": "PASS",
+      "count": 0,
+      "detail": "dates match expected format",
+      "samples": []
+    },
+    {
+      "check": "volume",
+      "table": "nep_master_user_table_sample_data",
+      "target": "table",
+      "status": "PASS",
+      "count": 13150,
+      "detail": "13150 rows",
+      "samples": []
+    },
+    {
+      "check": "uniqueness",
+      "table": "nep_master_user_table_sample_data",
+      "target": "user_id",
+      "status": "FAIL",
+      "count": 1,
+      "detail": "1+ duplicated primary-key values",
+      "samples": [
+        "ef73d77a-e51f-4bd8-a5af-da66f0562108 (x2)"
+      ]
+    },
+    {
+      "check": "null_keys",
+      "table": "nep_master_user_table_sample_data",
+      "target": "user_id",
+      "status": "PASS",
+      "count": 0,
+      "detail": "no nulls in key",
+      "samples": []
+    },
+    {
+      "check": "enum_validation",
+      "table": "nep_master_user_table_sample_data",
+      "target": "login_status",
+      "status": "PASS",
+      "count": 0,
+      "detail": "all values in declared vocabulary",
+      "samples": []
+    },
+    {
+      "check": "enum_validation",
+      "table": "nep_master_user_table_sample_data",
+      "target": "profile_status",
+      "status": "PASS",
+      "count": 0,
+      "detail": "all values in declared vocabulary",
+      "samples": []
+    },
+    {
+      "check": "enum_validation",
+      "table": "nep_master_user_table_sample_data",
+      "target": "phone_status",
+      "status": "PASS",
+      "count": 0,
+      "detail": "all values in declared vocabulary",
+      "samples": []
+    },
+    {
+      "check": "enum_validation",
+      "table": "nep_master_user_table_sample_data",
+      "target": "user_profile_status",
+      "status": "PASS",
+      "count": 0,
+      "detail": "all values in declared vocabulary",
+      "samples": []
+    },
+    {
+      "check": "enum_validation",
+      "table": "nep_master_user_table_sample_data",
+      "target": "user_type",
+      "status": "PASS",
+      "count": 0,
+      "detail": "all values in declared vocabulary",
+      "samples": []
+    },
+    {
+      "check": "enum_validation",
+      "table": "nep_master_user_table_sample_data",
+      "target": "company_type",
+      "status": "PASS",
+      "count": 0,
+      "detail": "all values in declared vocabulary",
+      "samples": []
+    },
+    {
+      "check": "enum_validation",
+      "table": "nep_master_user_table_sample_data",
+      "target": "company_revenue_range",
+      "status": "PASS",
+      "count": 0,
+      "detail": "all values in declared vocabulary",
+      "samples": []
+    },
+    {
+      "check": "enum_validation",
+      "table": "nep_master_user_table_sample_data",
+      "target": "user_role",
+      "status": "PASS",
+      "count": 0,
+      "detail": "all values in declared vocabulary",
+      "samples": []
+    },
+    {
+      "check": "date_format",
+      "table": "nep_master_user_table_sample_data",
+      "target": "activity_date",
+      "status": "PASS",
+      "count": 0,
+      "detail": "dates match expected format",
+      "samples": []
+    },
+    {
+      "check": "date_format",
+      "table": "nep_master_user_table_sample_data",
+      "target": "created_datetime",
+      "status": "PASS",
+      "count": 0,
+      "detail": "dates match expected format",
+      "samples": []
+    },
+    {
+      "check": "date_format",
+      "table": "nep_master_user_table_sample_data",
+      "target": "otp_verified_date",
+      "status": "PASS",
+      "count": 0,
+      "detail": "dates match expected format",
+      "samples": []
+    },
+    {
+      "check": "date_format",
+      "table": "nep_master_user_table_sample_data",
+      "target": "otp_verified_datetime",
+      "status": "PASS",
+      "count": 0,
+      "detail": "dates match expected format",
+      "samples": []
+    },
+    {
+      "check": "date_format",
+      "table": "nep_master_user_table_sample_data",
+      "target": "user_profile_completion_date",
+      "status": "PASS",
+      "count": 0,
+      "detail": "dates match expected format",
+      "samples": []
+    },
+    {
+      "check": "date_format",
+      "table": "nep_master_user_table_sample_data",
+      "target": "user_profile_updated_date",
+      "status": "PASS",
+      "count": 0,
+      "detail": "dates match expected format",
+      "samples": []
+    },
+    {
+      "check": "volume",
+      "table": "nep_mentor_profiles_sample_data",
+      "target": "table",
+      "status": "PASS",
+      "count": 49486,
+      "detail": "49486 rows",
+      "samples": []
+    },
+    {
+      "check": "null_keys",
+      "table": "nep_mentor_profiles_sample_data",
+      "target": "user_id",
+      "status": "PASS",
+      "count": 0,
+      "detail": "no nulls in key",
+      "samples": []
+    },
+    {
+      "check": "enum_validation",
+      "table": "nep_mentor_profiles_sample_data",
+      "target": "user_status",
+      "status": "PASS",
+      "count": 0,
+      "detail": "all values in declared vocabulary",
+      "samples": []
+    },
+    {
+      "check": "enum_validation",
+      "table": "nep_mentor_profiles_sample_data",
+      "target": "visibility",
+      "status": "PASS",
+      "count": 0,
+      "detail": "all values in declared vocabulary",
+      "samples": []
+    },
+    {
+      "check": "enum_validation",
+      "table": "nep_mentor_profiles_sample_data",
+      "target": "company_type",
+      "status": "PASS",
+      "count": 0,
+      "detail": "all values in declared vocabulary",
+      "samples": []
+    },
+    {
+      "check": "enum_validation",
+      "table": "nep_mentor_profiles_sample_data",
+      "target": "role",
+      "status": "PASS",
+      "count": 0,
+      "detail": "all values in declared vocabulary",
+      "samples": []
+    },
+    {
+      "check": "enum_validation",
+      "table": "nep_mentor_profiles_sample_data",
+      "target": "mentor_type",
+      "status": "PASS",
+      "count": 0,
+      "detail": "all values in declared vocabulary",
+      "samples": []
+    },
+    {
+      "check": "enum_validation",
+      "table": "nep_mentor_profiles_sample_data",
+      "target": "program",
+      "status": "PASS",
+      "count": 0,
+      "detail": "all values in declared vocabulary",
+      "samples": []
+    },
+    {
+      "check": "enum_validation",
+      "table": "nep_mentor_profiles_sample_data",
+      "target": "stage_name",
+      "status": "PASS",
+      "count": 0,
+      "detail": "all values in declared vocabulary",
+      "samples": []
+    },
+    {
+      "check": "date_format",
+      "table": "nep_mentor_profiles_sample_data",
+      "target": "created_at",
+      "status": "PASS",
+      "count": 0,
+      "detail": "dates match expected format",
+      "samples": []
+    },
+    {
+      "check": "date_format",
+      "table": "nep_mentor_profiles_sample_data",
+      "target": "updated_at",
+      "status": "PASS",
+      "count": 0,
+      "detail": "dates match expected format",
+      "samples": []
+    },
+    {
+      "check": "referential_integrity",
+      "table": "nep_liftoffx_data_sample",
+      "target": "userid -> nep_master_user_table_sample_data.user_id",
+      "status": "PASS",
+      "count": 0,
+      "detail": "all FK values resolve to a parent row",
+      "samples": []
+    },
+    {
+      "check": "referential_integrity",
+      "table": "nep_liftoffx_data_sample",
+      "target": "mentor_id -> nep_mentor_profiles_sample_data.user_id",
+      "status": "WARN",
+      "count": 10,
+      "detail": "10+ FK value(s) with no matching parent row",
+      "samples": [
+        "66e162b1b110774f218d7f3b (x18)",
+        "66ab3147e90de72681ce6666 (x18)",
+        "668d200f8f92fc77f0575399 (x14)",
+        "65c5c0ec7d1c8e31a84aa3c9 (x13)",
+        "65b1fca6dfb00a337f814b3f (x12)",
+        "664868c282bf8cdffe6058bc (x11)",
+        "621de03c8587c0001339b17d (x10)",
+        "622b3d8a8587c0001339cac9 (x8)",
+        "65c13b5e7d1c8e31a8f60b63 (x8)",
+        "66051d869a87f74dede2db49 (x8)"
+      ]
+    },
+    {
+      "check": "referential_integrity",
+      "table": "nep_master_live_events_data",
+      "target": "participant_user_id -> nep_master_user_table_sample_data.user_id",
+      "status": "WARN",
+      "count": 4,
+      "detail": "4+ FK value(s) with no matching parent row",
+      "samples": [
+        "2460f0ea-87bb-48fe-b260-8c54fb7d9faf (x68)",
+        "5a91b1ce-60c9-4835-be60-8530eaf45367 (x18)",
+        "7108e0fd-92c8-4334-bb2a-c5cf9b264bc1 (x9)",
+        "093bfd1e-78a0-4643-981d-844da3869ca0 (x2)"
+      ]
+    },
+    {
+      "check": "referential_integrity",
+      "table": "nep_mentor_profiles_sample_data",
+      "target": "user_id -> nep_master_user_table_sample_data.user_id",
+      "status": "WARN",
+      "count": 10,
+      "detail": "10+ FK value(s) with no matching parent row",
+      "samples": [
+        "5fdc77ff-2e22-4322-93f9-dccd4c8b7591 (x7280)",
+        "ebf422b5-8fae-43b7-b504-7597ae94894f (x2016)",
+        "0730a30d-a50a-43f5-8f06-64fd7c17df92 (x2016)",
+        "e669e8dd-2c94-4c01-b164-f69890f38bf5 (x1764)",
+        "8e2f2f0f-1d8f-47e7-af9f-b812a0452894 (x1764)",
+        "6a7c252b-ea97-4614-a588-9c43b880745f (x1584)",
+        "15aa16de-d90b-42fd-9194-93b471702467 (x960)",
+        "4e7e8d85-e201-42b9-83cb-4d39dc9aa623 (x924)",
+        "8ee12912-29de-433e-806f-ee7a67ef917d (x672)",
+        "92004dee-927a-43d4-a862-75a0007a594d (x616)"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+name: platform_user_funnel
+description: >-
+  Three-stage user journey funnel: Signups → Completed Onboarding →
+  Sent First AI Message. Shows how many users reach each stage and the
+  drop-off between stages. Optionally filtered to a date range, a specific
+  user type (External Users / Internal Users), and/or company type
+  (startup / msme). Use for "funnel conversion", "homepage to first message",
+  "onboarding drop-off", "activation funnel", "what percentage completed
+  onboarding", or "how many users sent their first message".
+aliases:
+  - "funnel conversion"
+  - "user journey funnel"
+  - "homepage to first message"
+  - "onboarding funnel"
+  - "activation funnel"
+  - "onboarding drop-off"
+  - "signup to message conversion funnel"
+  - "what percentage completed onboarding"
+  - "how many users sent their first message"
+  - "homepage to onboarding to first message"
+  - "user activation stages"
+  - "funnel drop-off"
+  - "show drop-off at each user journey stage"
+  - "homepage to onboarding to first-message funnel conversion rate"
+  - "funnel for startup users"
+  - "funnel for external startup users"
+owner: analytics-team
+certified: true
+source: questions_to_sql.md#QC3
+returns:
+  response_type: funnel_chart
+  label: stage_name
+  value: users
+
+date_filter:
+  column: created_at
+
+segment:
+  column: user_type
+  table: nep_liftoffx_data_sample
+
+choices:
+  company_type:
+    default: all
+    map:
+      all:
+        company_filter: ""
+      startup:
+        company_filter: " AND company_type = 'startup'"
+      msme:
+        company_filter: " AND company_type = 'msme'"
+
+sql_template: |
+  SELECT 'Signups' AS stage_name, COUNT(DISTINCT userid) AS users
+  FROM nep_liftoffx_data_sample
+  WHERE activity_type = 'signup'{date_filter}{segment_filter}{company_filter}
+  UNION ALL
+  SELECT 'Completed Onboarding' AS stage_name, COUNT(DISTINCT userid) AS users
+  FROM nep_liftoffx_data_sample
+  WHERE activity_type IN ('jounrney_explore', 'introductory_video_reg_users'){date_filter}{segment_filter}{company_filter}
+  UNION ALL
+  SELECT 'Sent First AI Message' AS stage_name, COUNT(DISTINCT userid) AS users
+  FROM nep_liftoffx_data_sample
+  WHERE activity_type = 'message' AND message_query IS NOT NULL{date_filter}{segment_filter}{company_filter}
+  LIMIT 500

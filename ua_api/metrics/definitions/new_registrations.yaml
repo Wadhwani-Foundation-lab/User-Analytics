@@ -1,0 +1,21 @@
+name: new_registrations
+description: >-
+  Count of users who registered (created an account), optionally within a date
+  range. Use for "how many users registered in <period>".
+aliases: ["registrations", "new users", "users registered", "signups",
+          "how many users registered", "new sign ups"]
+owner: analytics-team
+certified: true
+source: questions_to_sql.md#Q5
+returns:
+  response_type: text
+  value: registered_users
+
+date_filter:
+  column: created_datetime
+
+sql_template: |
+  SELECT COUNT(*) AS registered_users
+  FROM nep_master_user_table_sample_data
+  WHERE 1=1{date_filter}
+  LIMIT 500

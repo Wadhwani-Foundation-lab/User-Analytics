@@ -1,0 +1,40 @@
+name: questions_growth
+description: >-
+  Month-over-month trend of AI questions asked, with volume and growth rate
+  percentage per month. Use for "how are questions growing?", "question trend",
+  or "month-on-month change in questions".
+aliases:
+  - "MoM questions"
+  - "question trend"
+  - "question growth"
+  - "monthly questions"
+  - "questions over time"
+  - "month on month questions"
+  - "questions growth rate"
+  - "questions changing over time"
+owner: analytics-team
+certified: true
+source: questions_to_sql.md#Q4,Q50
+returns:
+  response_type: line_chart
+  label: month_year
+  value: questions
+
+sql_template: |
+  SELECT
+    month_year,
+    questions,
+    LAG(questions) OVER (ORDER BY month_year_order) AS prev_month_questions,
+    questions - LAG(questions) OVER (ORDER BY month_year_order) AS mom_change,
+    ROUND(
+      (questions - LAG(questions) OVER (ORDER BY month_year_order))::NUMERIC
+      / NULLIF(LAG(questions) OVER (ORDER BY month_year_order), 0) * 100, 2
+    ) AS mom_pct_change
+  FROM (
+    SELECT month_year, month_year_order, COUNT(*) AS questions
+    FROM nep_liftoffx_data_sample
+    WHERE activity_type = 'message' AND message_query IS NOT NULL
+    GROUP BY month_year, month_year_order
+  ) monthly_data
+  ORDER BY month_year_order
+  LIMIT 500

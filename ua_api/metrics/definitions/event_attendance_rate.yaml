@@ -1,0 +1,79 @@
+name: event_attendance_rate
+description: >-
+  Per live event: registrations, attended, no-shows and attendance rate %.
+  Defaults to events of any status (OPEN or COMPLETED); optionally filtered
+  by program (liftoff / liftoff-spark / liftoff-propel), session type
+  (expert_session / round_table), event status (completed-only), and/or a
+  date range. Use for "attendance rate for Round Table sessions in Liftoff-Propel",
+  "no-show rate for Expert Sessions", "how well attended were events in January".
+aliases:
+  - "event attendance"
+  - "attendance rate"
+  - "event attendance rate"
+  - "how well attended were events"
+  - "no show rate by event"
+  - "completed event attendance"
+  - "attendance rate for round table"
+  - "attendance rate for expert sessions"
+  - "attendance and no-show rate for sessions"
+  - "registration and attendance for sessions"
+owner: analytics-team
+certified: true
+source: questions_to_sql.md#Q24
+returns:
+  response_type: table
+  label: event_title
+  value: attendance_rate_pct
+
+date_filter:
+  column: start_date
+
+choices:
+  program:
+    default: all
+    map:
+      all:
+        program_filter: ""
+      liftoff:
+        program_filter: " AND program_key = 'liftoff'"
+      liftoff-spark:
+        program_filter: " AND program_key = 'liftoff-spark'"
+      liftoff-propel:
+        program_filter: " AND program_key = 'liftoff-propel'"
+  session_type:
+    default: all
+    map:
+      all:
+        session_type_filter: ""
+      expert_session:
+        session_type_filter: " AND sessiontype = 'expertSession'"
+      round_table:
+        session_type_filter: " AND sessiontype = 'roundTable'"
+  event_status:
+    default: all
+    map:
+      all:
+        event_status_filter: ""
+      completed:
+        event_status_filter: " AND event_status = 'COMPLETED'"
+
+sql_template: |
+  SELECT
+    event_id,
+    MAX(event_title) AS event_title,
+    MAX(start_date)  AS start_date,
+    MAX(sessiontype) AS session_type,
+    MAX(program_key) AS program,
+    MAX(gapkey)      AS gap_area,
+    COUNT(*) AS total_registrations,
+    SUM(CASE WHEN participant_status = 'ATTENDED' THEN 1 ELSE 0 END) AS attended,
+    SUM(CASE WHEN participant_status = 'NOSHOW' THEN 1 ELSE 0 END) AS no_shows,
+    ROUND(
+      SUM(CASE WHEN participant_status = 'ATTENDED' THEN 1 ELSE 0 END)::NUMERIC
+      / NULLIF(COUNT(*), 0) * 100, 2
+    ) AS attendance_rate_pct
+  FROM nep_master_live_events_data
+  WHERE 1=1{event_status_filter}{date_filter}{program_filter}{session_type_filter}
+  GROUP BY event_id
+  ORDER BY attendance_rate_pct DESC
+  LIMIT 500

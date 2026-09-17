@@ -1,0 +1,236 @@
+{
+  "mode": "certified_only",
+  "total": 10,
+  "passed": 10,
+  "failed": 0,
+  "path_miss": 0,
+  "metric_miss": 0,
+  "sql_violations": 0,
+  "missing_cols": 0,
+  "errors": 0,
+  "pass_rate_pct": 100.0,
+  "results": [
+    {
+      "question": "how many monthly active users did we have in Q4 2025?",
+      "expected_path": "certified",
+      "expected_metric": "active_users",
+      "tags": [
+        "mau",
+        "certified"
+      ],
+      "passed": true,
+      "path_matched": true,
+      "metric_matched": true,
+      "cols_found": [
+        "period",
+        "active_users"
+      ],
+      "cols_missing": [],
+      "sql_violations": [],
+      "rows_in_bounds": true,
+      "row_count": 3,
+      "error": null,
+      "latency_ms": 9782
+    },
+    {
+      "question": "show DAU trend for November 2025",
+      "expected_path": "certified",
+      "expected_metric": "active_users",
+      "tags": [
+        "dau",
+        "certified"
+      ],
+      "passed": true,
+      "path_matched": true,
+      "metric_matched": true,
+      "cols_found": [
+        "period",
+        "active_users"
+      ],
+      "cols_missing": [],
+      "sql_violations": [],
+      "rows_in_bounds": true,
+      "row_count": 30,
+      "error": null,
+      "latency_ms": 4868
+    },
+    {
+      "question": "what is our WAU over the last 2 months of available data?",
+      "expected_path": "certified",
+      "expected_metric": "active_users",
+      "tags": [
+        "wau",
+        "certified"
+      ],
+      "passed": true,
+      "path_matched": true,
+      "metric_matched": true,
+      "cols_found": [
+        "period",
+        "active_users"
+      ],
+      "cols_missing": [],
+      "sql_violations": [],
+      "rows_in_bounds": null,
+      "row_count": null,
+      "error": null,
+      "latency_ms": 4255
+    },
+    {
+      "question": "how many users registered in January 2026?",
+      "expected_path": "certified",
+      "expected_metric": "new_registrations",
+      "tags": [
+        "registrations",
+        "certified"
+      ],
+      "passed": true,
+      "path_matched": true,
+      "metric_matched": true,
+      "cols_found": [
+        "registered_users"
+      ],
+      "cols_missing": [],
+      "sql_violations": [],
+      "rows_in_bounds": true,
+      "row_count": 1,
+      "error": null,
+      "latency_ms": 3995
+    },
+    {
+      "question": "show the month over month growth in questions asked",
+      "expected_path": "certified",
+      "expected_metric": "questions_growth",
+      "tags": [
+        "questions",
+        "growth",
+        "certified"
+      ],
+      "passed": true,
+      "path_matched": true,
+      "metric_matched": true,
+      "cols_found": [
+        "month_year",
+        "questions"
+      ],
+      "cols_missing": [],
+      "sql_violations": [],
+      "rows_in_bounds": null,
+      "row_count": 6,
+      "error": null,
+      "latency_ms": 3324
+    },
+    {
+      "question": "what is the week over week retention rate?",
+      "expected_path": "certified",
+      "expected_metric": "weekly_retention",
+      "tags": [
+        "retention",
+        "certified"
+      ],
+      "passed": true,
+      "path_matched": true,
+      "metric_matched": true,
+      "cols_found": [
+        "current_week",
+        "retention_rate_pct"
+      ],
+      "cols_missing": [],
+      "sql_violations": [],
+      "rows_in_bounds": null,
+      "row_count": 22,
+      "error": null,
+      "latency_ms": 3279
+    },
+    {
+      "question": "which gap areas have the highest no-show rates?",
+      "expected_path": "certified",
+      "expected_metric": "event_noshow_by_gap",
+      "tags": [
+        "events",
+        "noshow",
+        "certified"
+      ],
+      "passed": true,
+      "path_matched": true,
+      "metric_matched": true,
+      "cols_found": [
+        "gap_area",
+        "no_show_rate_pct"
+      ],
+      "cols_missing": [],
+      "sql_violations": [],
+      "rows_in_bounds": null,
+      "row_count": 11,
+      "error": null,
+      "latency_ms": 4432
+    },
+    {
+      "question": "how many active mentors are there per industry?",
+      "expected_path": "certified",
+      "expected_metric": "mentors_by_industry",
+      "tags": [
+        "mentors",
+        "certified"
+      ],
+      "passed": true,
+      "path_matched": true,
+      "metric_matched": true,
+      "cols_found": [
+        "industry_name",
+        "active_mentors"
+      ],
+      "cols_missing": [],
+      "sql_violations": [],
+      "rows_in_bounds": null,
+      "row_count": 103,
+      "error": null,
+      "latency_ms": 5311
+    },
+    {
+      "question": "show the distribution of users by how many questions they've asked",
+      "expected_path": "certified",
+      "expected_metric": "power_users",
+      "tags": [
+        "engagement",
+        "power_users",
+        "certified"
+      ],
+      "passed": true,
+      "path_matched": true,
+      "metric_matched": true,
+      "cols_found": [
+        "user_segment",
+        "users"
+      ],
+      "cols_missing": [],
+      "sql_violations": [],
+      "rows_in_bounds": null,
+      "row_count": 4,
+      "error": null,
+      "latency_ms": 7974
+    },
+    {
+      "question": "how many repeat users do we have and what is the repeat rate?",
+      "expected_path": "certified",
+      "expected_metric": "repeat_users",
+      "tags": [
+        "retention",
+        "certified"
+      ],
+      "passed": true,
+      "path_matched": true,
+      "metric_matched": true,
+      "cols_found": [
+        "repeat_users",
+        "repeat_rate_pct"
+      ],
+      "cols_missing": [],
+      "sql_violations": [],
+      "rows_in_bounds": true,
+      "row_count": 1,
+      "error": null,
+      "latency_ms": 3275
+    }
+  ]
+}

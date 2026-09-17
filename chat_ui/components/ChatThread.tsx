@@ -5,8 +5,10 @@ import dynamic from "next/dynamic";
 import { ChatMessage } from "@/lib/types";
 import TableBlock from "./TableBlock";
 import SqlBlock from "./SqlBlock";
+import ProvenanceBadge from "./ProvenanceBadge";
 
 const ChartBlock = dynamic(() => import("./ChartBlock"), { ssr: false });
+const FunnelChart = dynamic(() => import("./FunnelChart"), { ssr: false });
 
 interface ChatThreadProps {
     messages: ChatMessage[];
@@ -30,6 +32,7 @@ function AssistantBubble({ msg }: { msg: ChatMessage }) {
     const isChart = ["bar_chart", "line_chart", "pie_chart"].includes(
         msg.response_type ?? ""
     );
+    const isFunnel = msg.response_type === "funnel_chart";
     const isTable = msg.response_type === "table";
 
     return (
@@ -39,9 +42,17 @@ function AssistantBubble({ msg }: { msg: ChatMessage }) {
                 <div className="bubble assistant-bubble">
                     <p className="bubble-text">{msg.content}</p>
                 </div>
+                {msg.provenance?.certified && (
+                    <ProvenanceBadge provenance={msg.provenance} />
+                )}
                 {isChart && msg.chart_config && (
                     <div className="chart-wrapper">
                         <ChartBlock config={msg.chart_config} />
+                    </div>
+                )}
+                {isFunnel && msg.chart_config && (
+                    <div className="chart-wrapper">
+                        <FunnelChart config={msg.chart_config} />
                     </div>
                 )}
                 {isTable && msg.table_data && (
