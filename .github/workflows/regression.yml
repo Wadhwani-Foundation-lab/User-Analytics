@@ -1,10 +1,7 @@
 name: Regression — Certified Metrics
 
 on:
-  pull_request:
-    branches: [main, user-analytics-testing]
-  push:
-    branches: [main]
+  workflow_dispatch:   # run manually from the Actions tab when needed
 
 jobs:
   certified-eval:
