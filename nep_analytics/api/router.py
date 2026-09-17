@@ -27,6 +27,8 @@ from ..core.sql_generator import (
     wants_session_type_comparison,
     wants_explicit_scalar,
     wants_top_n,
+    wants_two_dimensional_breakdown,
+    fix_user_type_enum,
 )
 from ..session.history import append_turn, get_history
 from ..session.store import (
@@ -92,6 +94,7 @@ def chat(req: ChatRequest, _: None = Depends(_auth)):
     nl_template: str = ""
     label_col: str = ""
     value_col: str = ""
+    series_col: str = ""
 
     try:
         from ..semantic.resolver import resolve as sem_resolve
@@ -148,6 +151,24 @@ def chat(req: ChatRequest, _: None = Depends(_auth)):
                 # generator write an actual ORDER BY ... LIMIT N.
                 match = None
                 metric = None
+            elif metric.name == "signups_by_segment" and wants_two_dimensional_breakdown(req.question):
+                # signups_by_segment can only split by ONE dimension (its
+                # `dimension` choice) — it can't also split by time period.
+                # Decline and let the free-form generator produce both
+                # columns plus chart_series_column for a proper multi-series
+                # (stacked bar / multi-line) chart.
+                match = None
+                metric = None
+            elif metric.name == "platform_user_funnel" and "homepage" in req.question.lower():
+                # platform_user_funnel's actual template is Signups -> Completed
+                # Onboarding (journey_explore/video) -> Message — it has NO
+                # homepage stage at all, despite aliases claiming to cover
+                # "homepage to onboarding to first message". A question that
+                # explicitly says "homepage" needs ga_event_name =
+                # 'homepage_landed' as stage 1 (Rule 27), which only the
+                # free-form generator can produce. Decline and fall through.
+                match = None
+                metric = None
 
         if match:
             params = dict(match["params"])
@@ -160,6 +181,7 @@ def chat(req: ChatRequest, _: None = Depends(_auth)):
                 # Same override, mirrored for mentor status.
                 params["user_status"] = "all"
             rendered_sql, _ = sem_render(metric, params)
+            rendered_sql = fix_user_type_enum(rendered_sql)
             sql = rendered_sql
             response_type = metric.response_type
             label_col = metric.label_column or ""
@@ -189,6 +211,7 @@ def chat(req: ChatRequest, _: None = Depends(_auth)):
         nl_template = gen["nl_answer_template"]
         label_col = gen["chart_label_column"]
         value_col = gen["chart_value_column"]
+        series_col = gen.get("chart_series_column", "")
 
     # ── 3. Clarification — LLM chose not to generate SQL ─────────────────────
     if not sql:
@@ -215,7 +238,7 @@ def chat(req: ChatRequest, _: None = Depends(_auth)):
 
     if response_type in ("bar_chart", "line_chart", "pie_chart", "funnel_chart"):
         if rows and label_col and value_col:
-            chart_dict = build_chart(rows, response_type, label_col, value_col, nl_template)
+            chart_dict = build_chart(rows, response_type, label_col, value_col, nl_template, series_col)
             chart_config = ChartConfig(**chart_dict)
             answer = interpret_results(req.question, rows)
         else:

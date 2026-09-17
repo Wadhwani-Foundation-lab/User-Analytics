@@ -27,30 +27,44 @@ _CHART_TYPE_MAP = {
 }
 
 
+def _to_float(v: Any) -> float:
+    try:
+        return float(v) if v is not None else 0.0
+    except (TypeError, ValueError):
+        return 0.0
+
+
 def build_chart(
     rows: list[dict],
     response_type: str,
     label_col: str,
     value_col: str,
     title: str = "",
+    series_col: str = "",
 ) -> dict:
-    """Return a Chart.js-compatible config dict."""
+    """Return a Chart.js-compatible config dict.
+
+    Without series_col: one dataset, one value per label (existing behaviour).
+    With series_col: rows are pivoted into one dataset per distinct series
+    value, all sharing the same label axis (e.g. month on x, one line/stack
+    per company_type) — bar charts render stacked, line charts render as
+    separate lines, one per series.
+    """
     chart_type = _CHART_TYPE_MAP.get(response_type, "bar")
+    label = value_col.replace("_", " ").title()
+
+    if series_col:
+        return _build_multi_series_chart(rows, chart_type, label_col, value_col, series_col, title, label)
+
     labels: list[str] = []
     values: list[float] = []
-
     for row in rows:
         labels.append(str(row.get(label_col, "") or "NULL"))
-        v = row.get(value_col, 0)
-        try:
-            values.append(float(v) if v is not None else 0.0)
-        except (TypeError, ValueError):
-            values.append(0.0)
+        values.append(_to_float(row.get(value_col, 0)))
 
     n = len(labels)
     bg = [_PALETTE[i % len(_PALETTE)] for i in range(n)]
     bd = [_BORDER[i % len(_BORDER)] for i in range(n)]
-    label = value_col.replace("_", " ").title()
 
     if chart_type == "line":
         dataset: dict[str, Any] = {
@@ -64,15 +78,7 @@ def build_chart(
             "pointBackgroundColor": _BORDER[0],
             "pointRadius": 4,
         }
-    elif chart_type == "pie":
-        dataset = {
-            "label": label,
-            "data": values,
-            "backgroundColor": bg,
-            "borderColor": bd,
-            "borderWidth": 1,
-        }
-    elif chart_type == "funnel":
+    elif chart_type in ("pie", "funnel"):
         dataset = {
             "label": label,
             "data": values,
@@ -95,6 +101,70 @@ def build_chart(
         "labels": labels,
         "datasets": [dataset],
         "title": title or label,
+    }
+
+
+def _build_multi_series_chart(
+    rows: list[dict],
+    chart_type: str,
+    label_col: str,
+    value_col: str,
+    series_col: str,
+    title: str,
+    value_label: str,
+) -> dict:
+    """Pivot rows with (label, series, value) into one Chart.js dataset per series."""
+    labels: list[str] = []
+    seen_labels: set[str] = set()
+    series_names: list[str] = []
+    seen_series: set[str] = set()
+    lookup: dict[tuple[str, str], float] = {}
+
+    for row in rows:
+        lbl = str(row.get(label_col, "") or "NULL")
+        ser = str(row.get(series_col, "") or "NULL")
+        if lbl not in seen_labels:
+            seen_labels.add(lbl)
+            labels.append(lbl)
+        if ser not in seen_series:
+            seen_series.add(ser)
+            series_names.append(ser)
+        lookup[(lbl, ser)] = _to_float(row.get(value_col, 0))
+
+    is_line = chart_type == "line"
+    datasets: list[dict[str, Any]] = []
+    for i, ser in enumerate(series_names):
+        color = _PALETTE[i % len(_PALETTE)]
+        border = _BORDER[i % len(_BORDER)]
+        data = [lookup.get((lbl, ser), 0.0) for lbl in labels]
+        if is_line:
+            datasets.append({
+                "label": ser,
+                "data": data,
+                "backgroundColor": color,
+                "borderColor": border,
+                "borderWidth": 2,
+                "tension": 0.4,
+                "fill": False,
+                "pointBackgroundColor": border,
+                "pointRadius": 4,
+            })
+        else:
+            datasets.append({
+                "label": ser,
+                "data": data,
+                "backgroundColor": color,
+                "borderColor": border,
+                "borderWidth": 1,
+                "borderRadius": 4,
+            })
+
+    return {
+        "type": "line" if is_line else "bar",
+        "labels": labels,
+        "datasets": datasets,
+        "title": title or value_label,
+        "stacked": not is_line,
     }
 
 

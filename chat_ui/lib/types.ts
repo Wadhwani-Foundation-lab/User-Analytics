@@ -10,6 +10,7 @@ export interface ChartConfig {
   labels: string[];
   datasets: Record<string, unknown>[];
   title?: string;
+  stacked?: boolean;
 }
 
 export interface TableData {

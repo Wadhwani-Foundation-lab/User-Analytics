@@ -25,6 +25,7 @@ class ChartConfig(BaseModel):
     labels: List[str]
     datasets: List[Dict[str, Any]]
     title: Optional[str] = None
+    stacked: Optional[bool] = None
 
 
 class TableData(BaseModel):
